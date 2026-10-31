@@ -155,6 +155,11 @@ fun TalentTreeModal(
                             TalentType.HYPE -> talents.hypeRateTier
                             TalentType.GREED -> talents.greedTier
                             TalentType.VAMPIRISM -> talents.vampirismTier
+                            TalentType.ARMOR -> talents.armorTier
+                            TalentType.CRIT_CHANCE -> talents.critChanceTier
+                            TalentType.CRIT_DAMAGE -> talents.critDamageTier
+                            TalentType.SPEED -> talents.speedTier
+                            TalentType.BOSS_SLAYER -> talents.bossSlayerTier
                         }
                         val isMaxed = currentTier >= talentType.maxTier
                         val reqDiamonds = talentType.baseCostDiamonds * (currentTier + 1)

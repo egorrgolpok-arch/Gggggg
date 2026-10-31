@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
                                     onGenerateNogAi = { isWeapon -> gameViewModel.generateNogAiItem(isWeapon) },
                                     onSearchNpc = { query -> gameViewModel.setNpcSearchQuery(query) },
                                     onDismissNogAiResult = { gameViewModel.dismissNogAiResult() },
+                                    onRejectNogAi = { gameViewModel.rejectNogAiItem() },
                                     onMainMenu = {
                                         gameViewModel.saveCurrentGame()
                                         gameViewModel.splashToMainMenu()

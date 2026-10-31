@@ -294,17 +294,20 @@ object ItemDatabase {
             Pair(-740f, -100f)
         )
 
-        for (i in coords.indices) {
+        val count = 8 + (floor / 3).coerceAtMost(10)
+        for (i in 0 until count) {
             val artIndex = ((floor * 13 + i * 17) % totalArts)
             val art = all200WorldArtifacts[artIndex].copy(
                 level = floor
             )
+            val posX = (Random.nextFloat() - 0.5f) * 1600f
+            val posY = (Random.nextFloat() - 0.5f) * 1600f
             list.add(
                 WorldArtifact(
                     id = UUID.randomUUID().toString(),
                     artifact = art,
-                    x = coords[i].first,
-                    y = coords[i].second
+                    x = posX,
+                    y = posY
                 )
             )
         }

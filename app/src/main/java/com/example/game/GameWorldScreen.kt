@@ -166,6 +166,13 @@ fun GameWorldScreen(
                 timeSec = timeSec
             )
 
+            // Active Companion Runner
+            p.activeCompanion?.let { companion ->
+                val sx = cameraCenterX + (companion.x - p.x)
+                val sy = cameraCenterY + (companion.y - p.y)
+                PixelRenderer.drawActiveCompanionRunner(this, companion, sx, sy, timeSec)
+            }
+
             // 7. Draw Enemies
             state.enemies.forEach { enemy ->
                 val sx = cameraCenterX + (enemy.x - p.x)
@@ -475,37 +482,77 @@ fun GameWorldScreen(
                 Spacer(modifier = Modifier.height(10.dp))
             }
 
-            // Next Floor / Spawn Boss shortcut button if enemies cleared
-            if (!state.bossActive && state.enemies.isEmpty()) {
+            // Condition 1: Can Call Boss (wave enemies cleared, boss not yet summoned, boss not active)
+            val waveCleared = (state.enemies.isEmpty() || state.floorEnemiesDefeated >= state.floorWaveTarget)
+            val canCallBoss = waveCleared && !state.bossSummonedOnFloor && !state.bossActive
+            // Condition 2: Can Advance Floor (boss summoned and defeated, no remaining enemies)
+            val canAdvance = state.bossSummonedOnFloor && !state.bossActive && state.enemies.isEmpty()
+
+            // Status message
+            val statusMsg = when {
+                canAdvance -> "🎉 БОСС ПОВЕРЖЕН! ЛИФТ ГОТОВ К ПОДЪЕМУ НА ЭТАЖ ${p.floor + 1}!"
+                state.bossActive -> "⚔️ БОСС НА АРЕНЕ! Уничтожьте его!"
+                state.bossSummonedOnFloor && state.enemies.isNotEmpty() -> "⚠️ Зачистите оставшихся врагов босса!"
+                canCallBoss -> "⚠️ ВОЛНА ЗАЧИЩЕНА! Вызовите Босса этажа!"
+                else -> "👾 Уничтожьте всех врагов волны (${state.floorEnemiesDefeated}/${state.floorWaveTarget})!"
+            }
+
+            Text(
+                text = statusMsg,
+                color = if (canAdvance) MartianGold else Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .background(Color(0xCC0F172A), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (!state.bossSummonedOnFloor) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (canCallBoss) Color(0xFF7C3AED) else Color(0xFF334155),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { viewModel.spawnBoss() }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                            .testTag("call_boss_button")
+                    ) {
+                        Text(
+                            if (canCallBoss) "⚠️ ВЫЗВАТЬ БОССА" else "🔒 БОСС (Сначала зачистите врагов)",
+                            color = if (canCallBoss) Color.White else Color.Gray,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
                 Box(
                     modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .background(MartianGold, RoundedCornerShape(12.dp))
+                        .background(
+                            if (canAdvance) MartianGold else Color(0xFF1E293B),
+                            RoundedCornerShape(10.dp)
+                        )
                         .clickable { viewModel.nextFloor() }
-                        .padding(horizontal = 24.dp, vertical = 10.dp)
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
                         .testTag("next_floor_button")
                 ) {
                     Text(
-                        "🎉 ПОДНЯТЬСЯ НА ЭТАЖ ${p.floor + 1} ➔",
-                        color = Color.Black,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 14.sp
+                        if (canAdvance) "🛗 ПОДНЯТЬСЯ НА ЭТАЖ ${p.floor + 1} ➔" else "🔒 ЛИФТ (Сначала одолейте босса)",
+                        color = if (canAdvance) Color.Black else Color.Gray,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
                     )
                 }
-                Spacer(modifier = Modifier.height(10.dp))
-            } else if (!state.bossActive && state.enemies.size < 5) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .background(Color(0xFF7C3AED), RoundedCornerShape(10.dp))
-                        .clickable { viewModel.spawnBoss() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .testTag("call_boss_button")
-                ) {
-                    Text("⚠️ ВЫЗВАТЬ БОССА ЭТАЖА", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                }
-                Spacer(modifier = Modifier.height(10.dp))
             }
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Bottom Controls: Joystick on Left, Actions on Right
             Row(

@@ -218,6 +218,27 @@ fun MainMenuScreen(
                         color = MartianGold
                     )
                 }
+
+                // Rebirth God Vlad Button
+                if (state.talents.getTotalTalentLevel() >= 1 || state.unlockedEndings.isNotEmpty()) {
+                    Button(
+                        onClick = { viewModel.birthGodVlad() },
+                        colors = ButtonDefaults.buttonColors(containerColor = MartianGold),
+                        border = androidx.compose.foundation.BorderStroke(2.dp, CyberCyan),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .testTag("god_vlad_rebirth_button")
+                    ) {
+                        Text(
+                            "👑 РОЖДЕНИЕ ГЛАВНОГО ВЛАДА 👑",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 14.sp,
+                            color = Color.Black
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(30.dp))

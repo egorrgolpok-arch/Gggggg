@@ -25,6 +25,7 @@ enum class GameDifficulty(
     val scoreMultiplier: Float
 ) {
     NORMAL("Нормальный Хайп", "Сбалансированное приключение на Марсе", 1.0f, 1.0f),
+    HARD("Сверхтяжелый Марс", "Очень сложный режим: враги в 3.5х сильнее и быстрее!", 3.5f, 3.0f),
     EXTREME("Экстремальный Марс", "Усиленные роботы-цензоры и качки-рейдеры", 1.4f, 1.5f),
     VIP_FLEX("VIP Флекс-Режим", "Владик получает +50% ресурсов и щит", 0.85f, 1.2f)
 }
@@ -97,7 +98,16 @@ enum class EnemyType(val baseHp: Float, val speed: Float, val score: Int, val is
     FITNESS_RAIDER(75f, 110f, 90),
     SHIELD_ENFORCER(95f, 85f, 120),
     BUREAU_WALKER(140f, 90f, 180),
-    GRAND_CENSOR_BOSS(1400f, 65f, 2500, isBoss = true)
+    WHITE_BUFF_MALE(65f, 125f, 70),
+    GIRL_RUNNER(50f, 150f, 60),
+    HEAVY_FEMALE(110f, 95f, 110),
+    WALKING_FEMALE_SIGN(80f, 115f, 85),
+    GRAND_CENSOR_BOSS(1400f, 65f, 2500, isBoss = true),
+    FAT_SKUF_BOSS(1600f, 60f, 3000, isBoss = true),
+    USSR_MAN_BOSS(1800f, 75f, 3500, isBoss = true),
+    VLAD_MOM_BOSS(2200f, 85f, 4000, isBoss = true),
+    VLAD_DAD_BOSS(2500f, 90f, 4500, isBoss = true),
+    GIRL_5YO_BOSS(3000f, 110f, 5000, isBoss = true)
 }
 
 data class Enemy(
@@ -178,11 +188,42 @@ data class HypercarSummon(
     val damage: Float = 500f
 )
 
+data class ActiveCompanion(
+    val id: String,
+    val name: String,
+    var x: Float = 0f,
+    var y: Float = 0f,
+    val color: Color = Color(0xFF00F0FF),
+    var shootCooldown: Float = 0f
+)
+
+enum class FloorBiome(val title: String, val primaryColor: Color, val accentColor: Color) {
+    PENTHOUSE("Пентхаус 800-го Этажа", Color(0xFF1E0A3C), Color(0xFFFFD700)),
+    CYBER_GARAGE("Кибер-Гараж 6969", Color(0xFF0F172A), Color(0xFF00F0FF)),
+    MARTIAN_CANYON("Багровый Марсианский Каньон", Color(0xFF450A0A), Color(0xFFFF4081)),
+    LAVA_MATRIX("Матрица Неоновых Лав", Color(0xFF18181B), Color(0xFF10B981)),
+    PALACE_SUMMIT("Золотой Пик Марса", Color(0xFF2E1065), Color(0xFFE040FB));
+
+    companion object {
+        fun getForFloor(floor: Int): FloorBiome {
+            return when {
+                floor <= 50 -> PENTHOUSE
+                floor <= 150 -> CYBER_GARAGE
+                floor <= 300 -> MARTIAN_CANYON
+                floor <= 500 -> LAVA_MATRIX
+                else -> PALACE_SUMMIT
+            }
+        }
+    }
+}
+
 data class DialogueOption(
     val label: String,
     val nextNodeIndex: Int = -1,
     val unlocksEndingId: Int? = null,
-    val rewardGold: Int = 0
+    val rewardGold: Int = 0,
+    val hireCostGold: Int = 0,
+    val isHireOption: Boolean = false
 )
 
 data class DialogueNode(
@@ -227,6 +268,8 @@ data class Player(
     var equippedWeapon: Weapon,
     val inventoryWeapons: MutableList<Weapon> = mutableListOf(),
     val equippedArtifacts: MutableList<Artifact> = mutableListOf(),
+    var activeCompanion: ActiveCompanion? = null,
+    var isGodModeVlad: Boolean = false,
     var isMoving: Boolean = false,
     var walkCycleTimer: Float = 0f,
     var speechText: String? = null,
@@ -245,19 +288,28 @@ data class CraftingRecipe(
 )
 
 data class MetaprogressionTalents(
-    val healthTier: Int = 0,       // +35 Max HP per tier (max 10)
-    val damageTier: Int = 0,       // +12% Weapon Damage per tier (max 10)
-    val dashCooldownTier: Int = 0, // -0.12s Dash CD per tier (max 5)
-    val hypeRateTier: Int = 0,     // +20% Hype generation per tier (max 5)
-    val greedTier: Int = 0,        // +25% Gold & Diamond drop value per tier (max 5)
-    val vampirismTier: Int = 0     // +3% Lifesteal chance on hit per tier (max 5)
+    val healthTier: Int = 0,       // +35 Max HP
+    val damageTier: Int = 0,       // +12% Weapon Damage
+    val dashCooldownTier: Int = 0, // -0.12s Dash CD
+    val hypeRateTier: Int = 0,     // +20% Hype generation
+    val greedTier: Int = 0,        // +25% Gold & Diamond drop
+    val vampirismTier: Int = 0,    // +3% Lifesteal
+    val armorTier: Int = 0,        // +5% Damage Reduction
+    val critChanceTier: Int = 0,   // +2% Crit Chance
+    val critDamageTier: Int = 0,   // +15% Crit Damage
+    val speedTier: Int = 0,        // +6% Move Speed
+    val bossSlayerTier: Int = 0    // +10% Boss Damage
 ) {
     fun getBonusMaxHp(): Float = healthTier * 35f
-    fun getDamageMultiplier(): Float = 1.0f + damageTier * 0.12f
+    fun getDamageMultiplier(): Float = 1.0f + damageTier * 0.12f + critDamageTier * 0.15f
     fun getDashCooldownReduction(): Float = dashCooldownTier * 0.12f
     fun getHypeMultiplier(): Float = 1.0f + hypeRateTier * 0.20f
     fun getDropMultiplier(): Float = 1.0f + greedTier * 0.25f
     fun getVampirismChance(): Float = vampirismTier * 0.03f
+    fun getDamageReduction(): Float = (armorTier * 0.05f).coerceAtMost(0.75f)
+    fun getSpeedMultiplier(): Float = 1.0f + speedTier * 0.06f
+    fun getBossDamageMultiplier(): Float = 1.0f + bossSlayerTier * 0.10f
+    fun getTotalTalentLevel(): Int = healthTier + damageTier + dashCooldownTier + hypeRateTier + greedTier + vampirismTier + armorTier + critChanceTier + critDamageTier + speedTier + bossSlayerTier
 }
 
 enum class TalentType(
@@ -273,7 +325,12 @@ enum class TalentType(
     DASH("Неоновый Рывок", "-0.12с к перезарядке рывка (до 5000 ур.)", 5000, 8, 40, "⚡"),
     HYPE("Хайп-Турбо", "+20% к скорости заряда 6969 гиперкаров (до 5000 ур.)", 5000, 10, 50, "🏎"),
     GREED("Золотой Дождь", "+25% к добыче золота и алмазов (до 5000 ур.)", 5000, 7, 35, "💰"),
-    VAMPIRISM("Гламурный Вампиризм", "+3% шанс вампиризма при ударе (до 5000 ур.)", 5000, 12, 60, "🍷")
+    VAMPIRISM("Гламурный Вампиризм", "+3% шанс вампиризма при ударе (до 5000 ур.)", 5000, 12, 60, "🍷"),
+    ARMOR("Титановая Броня Влада", "+5% к Защите от урона (до 5000 ур.)", 5000, 10, 50, "🛡"),
+    CRIT_CHANCE("Критический Флекс", "+2% Шанс Критического Урона (до 5000 ур.)", 5000, 12, 65, "🔥"),
+    CRIT_DAMAGE("Сверхзвуковой Критудар", "+15% к Силе Критического Урона (до 5000 ур.)", 5000, 15, 75, "💥"),
+    SPEED("Неоновые Кроссовки", "+6% Скорость Передвижения (до 5000 ур.)", 5000, 8, 40, "👟"),
+    BOSS_SLAYER("Убийца Натуралов", "+10% Урона по Боссам Марса (до 5000 ур.)", 5000, 14, 70, "👑")
 }
 
 enum class QuestType {

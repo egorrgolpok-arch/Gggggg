@@ -28,9 +28,9 @@ object NPCDatabase {
     )
 
     private val funnyDialogues = listOf(
-        "Владик, ты самый гениальный рэпер галактики! Роботы-цензоры ломают датчики от одного творения!",
+        "Владик, ты самый гениальный рэпер галактики! Роботы-натуралы ломают датчики от одного творения!",
         "Батя и Жульен заправили гиперкары концентрированным неоном. 800-й этаж готов к великому реду!",
-        "Наши бриллианты видны даже из космоса. Цензура рассыпалась в прах!",
+        "Наши бриллианты видны даже из космоса. Натуралы рассыпались в прах!",
         "Шампанское лилось по мраморной лестнице 800-го этажа! Марс официально принадлежит нам!",
         "Твой автотюн вибрирует на частоте чистой победы! Никто не сможет остановить флекс Влада!"
     )
@@ -133,7 +133,7 @@ object NPCDatabase {
         val name = if (index > baseNames.size) "$nameBase #$index" else nameBase
         val role = extraRoles[index % extraRoles.size]
         val story = funnyDialogues[index % funnyDialogues.size]
-        val endingTarget = (index % 100) + 1
+        val endingTarget = (index % 1111) + 1
         val color = listOf(
             Color(0xFF00E5FF), Color(0xFFFF4081), Color(0xFFFFD700),
             Color(0xFF7C4DFF), Color(0xFF00E676), Color(0xFFFF9100), Color(0xFFE040FB)
@@ -143,6 +143,8 @@ object NPCDatabase {
         val radius = 120f + (index % 10) * 45f
         val posX = (kotlin.math.cos(angle) * radius).toFloat()
         val posY = (kotlin.math.sin(angle) * radius).toFloat()
+
+        val hireCost = 2500 + (abs(index * 9301 + 49297) % 7500)
 
         return FriendlyNPC(
             id = "npc_generated_$index",
@@ -154,27 +156,16 @@ object NPCDatabase {
             dialogues = listOf(
                 DialogueNode(
                     speaker = name,
-                    text = "Салют, королю Марса Владику! Я — $name ($role). $story",
+                    text = "Салют, королю Марса Владику! Я — $name ($role). $story Готов сопровождать тебя в рейде как боевой напарник!",
                     options = listOf(
-                        DialogueOption("Поделись марсианским золотом!", nextNodeIndex = 1, rewardGold = 60 + (index % 10) * 15),
-                        DialogueOption("Расскажи секрет флекса!", nextNodeIndex = 2),
-                        DialogueOption("Открыть главу #$endingTarget в хронике!", nextNodeIndex = 3, unlocksEndingId = endingTarget)
+                        DialogueOption("🤝 Нанять $name на 1 забег как помощника (Цена: $hireCost 💰)", hireCostGold = hireCost, isHireOption = true),
+                        DialogueOption("Поделись марсианским золотом!", nextNodeIndex = 1, rewardGold = 150 + (index % 10) * 50)
                     )
                 ),
                 DialogueNode(
                     speaker = name,
                     text = "Держи золото, Владик! Пентхаус гудёт в твою честь!",
                     options = listOf(DialogueOption("Вперед к победам!", nextNodeIndex = -1))
-                ),
-                DialogueNode(
-                    speaker = name,
-                    text = "Секрет прост: всегда носи золотую цепь и читай трэп с чистой душой!",
-                    options = listOf(DialogueOption("Золотые слова!", nextNodeIndex = -1))
-                ),
-                DialogueNode(
-                    speaker = name,
-                    text = "ГЛАВА ЗАПИСАНА! Финал #$endingTarget разблокирован!",
-                    options = listOf(DialogueOption("ТРИУМФ ВЛАДИКА!", nextNodeIndex = -1, unlocksEndingId = endingTarget))
                 )
             )
         )

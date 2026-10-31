@@ -244,12 +244,27 @@ object PixelRenderer {
                 size = Size(52f, 16f)
             )
 
-            // Dash ghost trail
-            if (player.isDashing) {
+            // Active Companion Drone/NPC
+            player.activeCompanion?.let { comp ->
+                val compX = screenX - 36f
+                val compY = currentY - 32f + sin(timeSec * 4f) * 6f
+                drawCircle(comp.color, 12f, Offset(compX, compY))
+                drawCircle(Color.White, 5f, Offset(compX, compY))
+                drawLine(comp.color, Offset(screenX, currentY - 20f), Offset(compX, compY), strokeWidth = 2f)
+            }
+
+            // God Mode Vlad Aura Ring
+            if (player.isGodModeVlad) {
                 drawCircle(
-                    color = Color(0xFFFF007F).copy(alpha = 0.5f),
-                    radius = 42f,
+                    color = Color(0xFFFFD700).copy(alpha = 0.4f),
+                    radius = 54f + sin(timeSec * 8f) * 6f,
                     center = Offset(screenX, currentY)
+                )
+                drawCircle(
+                    color = Color(0xFF00F0FF).copy(alpha = 0.3f),
+                    radius = 62f + cos(timeSec * 6f) * 8f,
+                    center = Offset(screenX, currentY),
+                    style = Stroke(3f)
                 )
             }
 
@@ -584,7 +599,89 @@ object PixelRenderer {
                     // Pulsing central anti-fun core
                     val corePulse = (sin(timeSec * 8f) + 1f) * 0.5f
                     drawCircle(Color(0xFFDC2626), 18f + corePulse * 4f, Offset(screenX, screenY))
-                    drawCircle(Color.White, 8f, Offset(screenX, screenY))
+                }
+
+                EnemyType.WHITE_BUFF_MALE -> {
+                    val rY = screenY + sin(timeSec * 8f) * 2f
+                    drawCircle(Color(0xFFFFF0E0), 12f, Offset(screenX, rY - 22f))
+                    drawRect(Color(0xFF0F172A), Offset(screenX - 8f, rY - 24f), Size(16f, 5f))
+                    drawRoundRect(Color(0xFFE2E8F0), Offset(screenX - 14f, rY - 10f), Size(28f, 24f), CornerRadius(4f, 4f))
+                    drawCircle(Color(0xFFFFF0E0), 7f, Offset(screenX - 16f, rY - 2f))
+                    drawCircle(Color(0xFFFFF0E0), 7f, Offset(screenX + 16f, rY - 2f))
+                    drawRect(Color(0xFF1E293B), Offset(screenX - 12f, rY + 14f), Size(24f, 12f))
+                }
+
+                EnemyType.GIRL_RUNNER -> {
+                    val rY = screenY + sin(timeSec * 12f) * 3f
+                    drawCircle(Color(0xFFFFD1A4), 11f, Offset(screenX, rY - 20f))
+                    drawCircle(Color(0xFFEC4899), 13f, Offset(screenX, rY - 22f), style = Stroke(3f))
+                    drawRoundRect(Color(0xFFF43F5E), Offset(screenX - 11f, rY - 9f), Size(22f, 20f), CornerRadius(4f, 4f))
+                    drawRect(Color(0xFF00F0FF), Offset(screenX - 10f, rY + 11f), Size(20f, 12f))
+                }
+
+                EnemyType.HEAVY_FEMALE -> {
+                    val rY = screenY + sin(timeSec * 6f) * 2f
+                    drawCircle(Color(0xFFFFE0BD), 15f, Offset(screenX, rY - 24f))
+                    drawRoundRect(Color(0xFFA855F7), Offset(screenX - 18f, rY - 9f), Size(36f, 26f), CornerRadius(6f, 6f))
+                    drawRect(Color(0xFF475569), Offset(screenX + 16f, rY - 20f), Size(8f, 32f))
+                    drawCircle(Color(0xFFFFD700), 5f, Offset(screenX + 20f, rY - 20f))
+                }
+
+                EnemyType.WALKING_FEMALE_SIGN -> {
+                    val rY = screenY + sin(timeSec * 9f) * 3f
+                    drawCircle(Color(0xFFEC4899), 10f, Offset(screenX, rY - 22f))
+                    val dressPath = Path().apply {
+                        moveTo(screenX, rY - 12f)
+                        lineTo(screenX - 16f, rY + 12f)
+                        lineTo(screenX + 16f, rY + 12f)
+                        close()
+                    }
+                    drawPath(dressPath, Color(0xFFF43F5E))
+                    drawRect(Color(0xFF334155), Offset(screenX - 8f, rY + 12f), Size(5f, 14f))
+                    drawRect(Color(0xFF334155), Offset(screenX + 3f, rY + 12f), Size(5f, 14f))
+                }
+
+                EnemyType.FAT_SKUF_BOSS -> {
+                    val r = enemy.radius
+                    val bob = sin(timeSec * 4f) * 4f
+                    drawCircle(Color(0xFFFFE0BD), r, Offset(screenX, screenY + bob))
+                    drawCircle(Color(0xFF10B981), r + 8f, Offset(screenX, screenY + bob), style = Stroke(4f))
+                    drawCircle(Color(0xFFF8FAFC), r * 0.7f, Offset(screenX, screenY + bob))
+                    drawCircle(Color(0xFFFFE0BD), r * 0.5f, Offset(screenX, screenY - r * 0.7f + bob))
+                    drawArc(Color(0xFF78350F), 0f, 180f, false, Offset(screenX - r * 0.4f, screenY - r * 0.5f + bob), Size(r * 0.8f, r * 0.5f))
+                    drawRoundRect(Color(0xFF15803D), Offset(screenX + r * 0.8f, screenY - 10f + bob), Size(18f, 40f), CornerRadius(8f, 8f))
+                }
+
+                EnemyType.USSR_MAN_BOSS -> {
+                    val r = enemy.radius
+                    drawRoundRect(Color(0xFF991B1B), Offset(screenX - r, screenY - r), Size(r * 2f, r * 2f), CornerRadius(12f, 12f))
+                    drawCircle(Color(0xFFFFD700), r * 0.4f, Offset(screenX, screenY))
+                    drawCircle(Color.Red, r * 0.25f, Offset(screenX, screenY))
+                    drawRect(Color(0xFF334155), Offset(screenX - r * 0.7f, screenY - r - 10f), Size(r * 1.4f, 18f))
+                }
+
+                EnemyType.VLAD_MOM_BOSS -> {
+                    val r = enemy.radius
+                    drawCircle(Color(0xFFFFD1A4), r * 0.8f, Offset(screenX, screenY))
+                    drawRoundRect(Color(0xFFE040FB), Offset(screenX - r * 0.9f, screenY - r * 0.5f), Size(r * 1.8f, r * 1.5f), CornerRadius(10f, 10f))
+                    drawLine(Color(0xFFB45309), Offset(screenX - r - 10f, screenY - r), Offset(screenX + r + 10f, screenY - r + 15f), 10f)
+                }
+
+                EnemyType.VLAD_DAD_BOSS -> {
+                    val r = enemy.radius
+                    drawCircle(Color(0xFFFFD1A4), r * 0.85f, Offset(screenX, screenY))
+                    drawRoundRect(Color.White, Offset(screenX - r * 0.7f, screenY - r * 0.4f), Size(r * 1.4f, r * 1.3f), CornerRadius(8f, 8f))
+                    drawLine(Color(0xFF94A3B8), Offset(screenX + r * 0.5f, screenY - r), Offset(screenX + r * 0.8f, screenY + r), 12f)
+                }
+
+                EnemyType.GIRL_5YO_BOSS -> {
+                    val r = enemy.radius
+                    val pulse = sin(timeSec * 8f) * 5f
+                    drawCircle(Color(0xFFFF69B4), r + pulse, Offset(screenX, screenY), style = Stroke(3f))
+                    drawCircle(Color(0xFFFFF0F5), r * 0.75f, Offset(screenX, screenY))
+                    drawCircle(Color(0xFFFF1493), r * 0.3f, Offset(screenX, screenY - 10f))
+                    drawLine(Color(0xFFFFD700), Offset(screenX + 10f, screenY), Offset(screenX + r + 15f, screenY - r), 6f)
+                    drawCircle(Color(0xFFFFD700), 12f, Offset(screenX + r + 15f, screenY - r))
                 }
             }
 
@@ -884,6 +981,33 @@ object PixelRenderer {
             val bubbleY = artY - 24f
             drawRoundRect(Color(0xEE0F172A), Offset(screenX - 38f, bubbleY - 8f), Size(76f, 18f), CornerRadius(6f, 6f))
             drawRoundRect(Color(0xFFFFD700), Offset(screenX - 38f, bubbleY - 8f), Size(76f, 18f), CornerRadius(6f, 6f), style = Stroke(1.5f))
+        }
+    }
+
+    fun drawActiveCompanionRunner(
+        drawScope: DrawScope,
+        companion: ActiveCompanion,
+        screenX: Float,
+        screenY: Float,
+        timeSec: Float
+    ) {
+        with(drawScope) {
+            val bob = sin(timeSec * 10f) * 3f
+            val cY = screenY + bob
+
+            // Shadow
+            drawOval(Color(0x66000000), Offset(screenX - 16f, screenY + 16f), Size(32f, 10f))
+
+            // Dark runner body with cyan glowing eyes & visor
+            drawCircle(Color(0xFF0F172A), 12f, Offset(screenX, cY - 18f))
+            drawRect(Color(0xFF00F0FF), Offset(screenX - 8f, cY - 20f), Size(16f, 5f))
+
+            // Muscular torso with companion emblem
+            drawRoundRect(Color(0xFF1E293B), Offset(screenX - 12f, cY - 6f), Size(24f, 22f), CornerRadius(4f, 4f))
+            drawCircle(companion.color, 4f, Offset(screenX, cY + 2f))
+
+            // Laser weapon in hand
+            drawRect(Color(0xFF00F0FF), Offset(screenX + 10f, cY - 4f), Size(18f, 6f))
         }
     }
 }

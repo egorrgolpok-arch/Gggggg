@@ -59,6 +59,7 @@ fun HubScreen(
     onGenerateNogAi: (Boolean) -> Unit,
     onSearchNpc: (String) -> Unit,
     onDismissNogAiResult: () -> Unit,
+    onRejectNogAi: () -> Unit,
     onMainMenu: () -> Unit
 ) {
     val p = state.player
@@ -620,8 +621,8 @@ fun HubScreen(
                     Text("🤖", fontSize = 54.sp)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "nOG AI СОЗДАЕТ АРТЕФАКТ ДЛЯ ВЛАДА...",
-                        fontSize = 16.sp,
+                        text = "nOG AI генерирует предмет для Владика",
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         color = CyberCyan,
                         textAlign = TextAlign.Center
@@ -631,8 +632,8 @@ fun HubScreen(
                         progress = state.nogAiProgress,
                         modifier = Modifier
                             .fillMaxWidth(0.8f)
-                            .height(10.dp)
-                            .clip(RoundedCornerShape(5.dp)),
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(6.dp)),
                         color = HotPink,
                         trackColor = Color(0xFF334155)
                     )
@@ -646,7 +647,7 @@ fun HubScreen(
             }
         }
 
-        // Animated nOG AI Result Modal
+        // Animated nOG AI Result Modal (Keep or Reject)
         if (state.generatedNogAiWeapon != null || state.generatedNogAiArtifact != null) {
             val itemWeapon = state.generatedNogAiWeapon
             val itemArtifact = state.generatedNogAiArtifact
@@ -684,13 +685,31 @@ fun HubScreen(
                             Text("✦ +${itemArtifact.bonusHp.toInt()} HP | +${itemArtifact.bonusDamage.toInt()} Урона", color = HotPink, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = onDismissNogAiResult,
-                            colors = ButtonDefaults.buttonColors(containerColor = GoldCoin),
-                            shape = RoundedCornerShape(10.dp)
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text("ЭКИПИРОВАТЬ И НАЧАТЬ РЕЙД!", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                            Button(
+                                onClick = onDismissNogAiResult,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldCoin),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("ОСТАВИТЬ", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                            }
+                            Button(
+                                onClick = onRejectNogAi,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("ОТКАЗАТЬСЯ", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
                         }
                     }
                 }

@@ -56,7 +56,8 @@ data class GameState(
     val generatedNogAiArtifact: Artifact? = null,
     val isTransitioningFloor: Boolean = false,
     val transitionFloorNumber: Int = 1,
-    val npcSearchQuery: String = ""
+    val npcSearchQuery: String = "",
+    val bossSummonedOnFloor: Boolean = false
 )
 
 class GameViewModel : ViewModel() {
@@ -166,7 +167,49 @@ class GameViewModel : ViewModel() {
 
     fun startGame() = startNewGame(GameDifficulty.NORMAL)
 
+    fun birthGodVlad() {
+        val godWeapon = Weapon(
+            type = WeaponType.PLATINUM_BLASTER,
+            name = "👑 ВЕНЕЦ БОГА МАРСА - ВЛАДИК",
+            description = "Абсолютное божественное оружие, испускающее платиновый лазер смерти.",
+            damage = 9999f,
+            attackSpeed = 5.0f,
+            range = 800f,
+            knockback = 500f,
+            color = Color(0xFFFFD700),
+            rarity = ItemRarity.LEGENDARY
+        )
+        _state.update {
+            it.copy(
+                screen = GameScreen.PLAYING,
+                difficulty = GameDifficulty.NORMAL,
+                showNewGameDialog = false,
+                player = Player(
+                    hp = 10000f,
+                    maxHp = 10000f,
+                    gold = 99999,
+                    diamonds = 9999,
+                    batteries = 999,
+                    floor = 1,
+                    isGodModeVlad = true,
+                    equippedWeapon = godWeapon,
+                    inventoryWeapons = mutableListOf(godWeapon)
+                ),
+                enemies = emptyList(),
+                npcs = emptyList(),
+                worldArtifacts = ProceduralWorld.generateWorldArtifactsForFloor(1),
+                currentPunchline = "👑 РОЖДЕНИЕ ГЛАВНОГО ВЛАДА! БОЖЕСТВЕННЫЙ ФЛЕКС НА ВСЕ 800 ЭТАЖЕЙ!",
+                showSpeechBubble = true
+            )
+        }
+        speechCooldown = 5f
+        spawnEnemiesForWave(8)
+    }
+
     fun startNewGame(difficulty: GameDifficulty, starterBonus: Boolean = false) {
+        val isHard = (difficulty == GameDifficulty.HARD)
+        val initialHp = if (isHard) 180f else (250f + (if (starterBonus) 50f else 0f))
+
         val initialWeapon = Weapon(
             type = if (starterBonus) WeaponType.PLATINUM_BLASTER else WeaponType.RUBBER_BAT,
             name = if (starterBonus) "Платиновый Бластер Басов" else "Резиновая Булава Хайпа",
@@ -195,8 +238,8 @@ class GameViewModel : ViewModel() {
                 difficulty = difficulty,
                 showNewGameDialog = false,
                 player = Player(
-                    hp = 250f + (if (starterBonus) 50f else 0f),
-                    maxHp = 250f + (if (starterBonus) 50f else 0f),
+                    hp = initialHp,
+                    maxHp = initialHp,
                     gold = if (starterBonus) 250 else 100,
                     diamonds = if (starterBonus) 20 else 10,
                     batteries = if (starterBonus) 10 else 5,
@@ -206,9 +249,9 @@ class GameViewModel : ViewModel() {
                     equippedArtifacts = mutableListOf(initialArtifact)
                 ),
                 enemies = emptyList(),
-                npcs = ProceduralWorld.getStoryNPCs(),
+                npcs = emptyList(),
                 worldArtifacts = ProceduralWorld.generateWorldArtifactsForFloor(1),
-                currentPunchline = "Добро пожаловать в мой 800-этажный пентхаус на Марсе! Пошумим!",
+                currentPunchline = if (isHard) "⚠️ СЛОЖНЫЙ РЕЖИМ ВКЛЮЧЕН! ВРАГИ В 3.5Х СИЛЬНЕЕ!" else "Добро пожаловать в мой 800-этажный пентхаус на Марсе! Пошумим!",
                 showSpeechBubble = true
             )
         }
@@ -336,12 +379,12 @@ class GameViewModel : ViewModel() {
                     val dist = sqrt(dx * dx + dy * dy)
                     if (dist < w.range + enemy.radius) {
                         val enemyAngle = atan2(dy, dx)
-                        var angleDiff = abs(enemyAngle - angle)
+                        var angleDiff = kotlin.math.abs(enemyAngle - angle)
                         if (angleDiff > Math.PI) angleDiff = (2 * Math.PI - angleDiff).toFloat()
                         if (angleDiff < 1.3f) {
                             hitEnemies.add(enemy.id)
                             val toPlayerAngle = atan2(p.y - enemy.y, p.x - enemy.x)
-                            var shieldDiff = abs(toPlayerAngle - enemy.facingAngle)
+                            var shieldDiff = kotlin.math.abs(toPlayerAngle - enemy.facingAngle)
                             if (shieldDiff > Math.PI) shieldDiff = (2 * Math.PI - shieldDiff).toFloat()
                             val isBlocked = enemy.hasShield && shieldDiff < 1.1f
 
@@ -527,6 +570,43 @@ class GameViewModel : ViewModel() {
         val s = _state.value
         val p = s.player
 
+        if (option.isHireOption) {
+            val npc = s.activeDialogueNPC
+            if (p.gold >= option.hireCostGold && npc != null) {
+                p.gold -= option.hireCostGold
+                p.activeCompanion = ActiveCompanion(
+                    id = npc.id,
+                    name = npc.name,
+                    color = npc.color
+                )
+                vibrate(80)
+                val returnScreen = if (_state.value.screen == GameScreen.VIP_HUB) GameScreen.VIP_HUB else GameScreen.PLAYING
+                _state.update {
+                    it.copy(
+                        player = p,
+                        screen = returnScreen,
+                        activeDialogueNPC = null,
+                        currentDialogueNodeIndex = 0,
+                        currentPunchline = "🤝 Нанят помощник ${npc.name} на 1 забег!",
+                        showSpeechBubble = true
+                    )
+                }
+                speechCooldown = 4f
+                saveCurrentGame()
+                return
+            } else {
+                vibrate(40)
+                _state.update {
+                    it.copy(
+                        currentPunchline = "Недостаточно золота для найма! Нужно ${option.hireCostGold} 💰.",
+                        showSpeechBubble = true
+                    )
+                }
+                speechCooldown = 3f
+                return
+            }
+        }
+
         if (option.rewardGold > 0) {
             p.gold += option.rewardGold
         }
@@ -548,7 +628,6 @@ class GameViewModel : ViewModel() {
                 )
             }
         } else {
-            // Close dialogue
             val returnScreen = if (_state.value.screen == GameScreen.VIP_HUB) GameScreen.VIP_HUB else GameScreen.PLAYING
             _state.update {
                 it.copy(
@@ -699,6 +778,33 @@ class GameViewModel : ViewModel() {
             }
         }
 
+        val companionProjectiles = mutableListOf<Projectile>()
+        p.activeCompanion?.let { companion ->
+            companion.x = p.x - 36f * cos(p.facingAngle) - 24f * sin(p.facingAngle)
+            companion.y = p.y - 36f * sin(p.facingAngle) + 24f * cos(p.facingAngle)
+            companion.shootCooldown -= dt
+            if (companion.shootCooldown <= 0f && s.enemies.isNotEmpty()) {
+                companion.shootCooldown = 0.5f
+                val nearest = s.enemies.minByOrNull { sqrt((it.x - companion.x) * (it.x - companion.x) + (it.y - companion.y) * (it.y - companion.y)) }
+                if (nearest != null) {
+                    val fireAngle = atan2(nearest.y - companion.y, nearest.x - companion.x)
+                    companionProjectiles.add(
+                        Projectile(
+                            x = companion.x + cos(fireAngle) * 16f,
+                            y = companion.y + sin(fireAngle) * 16f,
+                            vx = cos(fireAngle) * 550f,
+                            vy = sin(fireAngle) * 550f,
+                            damage = 40f + p.floor * 10f,
+                            radius = 8f,
+                            color = Color(0xFF00F0FF),
+                            isPlayer = true,
+                            lifetime = 1.2f
+                        )
+                    )
+                }
+            }
+        }
+
         val updatedHypercars = s.hypercars.mapNotNull { car ->
             car.x += car.vx * dt
             car.y += car.vy * dt
@@ -712,7 +818,7 @@ class GameViewModel : ViewModel() {
 
         val remainingEnemies = s.enemies.toMutableList()
 
-        val updatedProjectiles = s.projectiles.mapNotNull { proj ->
+        val updatedProjectiles = (s.projectiles + companionProjectiles).mapNotNull { proj ->
             proj.x += proj.vx * dt
             proj.y += proj.vy * dt
             proj.lifetime -= dt
@@ -726,7 +832,7 @@ class GameViewModel : ViewModel() {
                     if (sqrt(dx * dx + dy * dy) < proj.radius + enemy.radius) {
                         hit = true
                         val toProjAngle = atan2(proj.y - enemy.y, proj.x - enemy.x)
-                        var shieldDiff = abs(toProjAngle - enemy.facingAngle)
+                        var shieldDiff = kotlin.math.abs(toProjAngle - enemy.facingAngle)
                         if (shieldDiff > Math.PI) shieldDiff = (2 * Math.PI - shieldDiff).toFloat()
 
                         if (enemy.hasShield && shieldDiff < 1.0f) {
@@ -800,7 +906,7 @@ class GameViewModel : ViewModel() {
                 }
                 if (enemy.type.isBoss) {
                     updateQuestProgress(QuestType.KILL_BOSS, 1)
-                    val nextEndingId = (p.floor % 100) + 1
+                    val nextEndingId = (p.floor % 1111) + 1
                     val updatedEndings = s.unlockedEndings + nextEndingId
                     appContext?.let { SaveManager.saveUnlockedEnding(it, nextEndingId) }
                     updateQuestProgress(QuestType.COMPLETE_ENDINGS, 1)
@@ -993,7 +1099,6 @@ class GameViewModel : ViewModel() {
     private fun spawnSingleEnemy(playerX: Float, playerY: Float, floor: Int) {
         var ex = playerX + 400f
         var ey = playerY
-        // Find walkable point in a ring around player
         for (attempt in 0..12) {
             val angle = Random.nextFloat() * 6.283f
             val dist = 360f + Random.nextFloat() * 160f
@@ -1008,24 +1113,32 @@ class GameViewModel : ViewModel() {
 
         val roll = Random.nextInt(100)
         val enemyType = when {
-            roll < 35 -> EnemyType.CENSOR_DRONE
-            roll < 60 -> EnemyType.FITNESS_RAIDER
-            roll < 80 -> EnemyType.SHIELD_ENFORCER
+            roll < 15 -> EnemyType.WHITE_BUFF_MALE
+            roll < 30 -> EnemyType.GIRL_RUNNER
+            roll < 45 -> EnemyType.HEAVY_FEMALE
+            roll < 60 -> EnemyType.WALKING_FEMALE_SIGN
+            roll < 75 -> EnemyType.CENSOR_DRONE
+            roll < 88 -> EnemyType.FITNESS_RAIDER
+            roll < 95 -> EnemyType.SHIELD_ENFORCER
             else -> EnemyType.BUREAU_WALKER
         }
 
         val diffMult = _state.value.difficulty.enemyHpMultiplier
-        val scaledHp = (enemyType.baseHp + floor * 25f) * diffMult
-        val scaledDamage = 12f + floor * 4f
+        val scaledHp = (enemyType.baseHp * (1f + floor * 0.45f)) * diffMult
+        val scaledDamage = 12f + floor * 6f
 
         val enemy = Enemy(
             type = enemyType,
             name = when (enemyType) {
-                EnemyType.CENSOR_DRONE -> "Дрон-Цензор Mk.I"
+                EnemyType.WHITE_BUFF_MALE -> "Качок в Очках"
+                EnemyType.GIRL_RUNNER -> "Бегущая Неон-Девушка"
+                EnemyType.HEAVY_FEMALE -> "Тяжелая Воительница"
+                EnemyType.WALKING_FEMALE_SIGN -> "Ходячий Знак Девушки"
+                EnemyType.CENSOR_DRONE -> "Дрон-Натурал Mk.I"
                 EnemyType.FITNESS_RAIDER -> "Качок-Рейдер"
                 EnemyType.SHIELD_ENFORCER -> "Щитовой Силовик"
                 EnemyType.BUREAU_WALKER -> "Шагающий Запретитель"
-                else -> "Робот-Цензор"
+                else -> "Робот-Противник"
             },
             x = ex,
             y = ey,
@@ -1039,6 +1152,10 @@ class GameViewModel : ViewModel() {
                 else -> 22f
             },
             color = when (enemyType) {
+                EnemyType.WHITE_BUFF_MALE -> Color(0xFFE2E8F0)
+                EnemyType.GIRL_RUNNER -> Color(0xFFF43F5E)
+                EnemyType.HEAVY_FEMALE -> Color(0xFFA855F7)
+                EnemyType.WALKING_FEMALE_SIGN -> Color(0xFFEC4899)
                 EnemyType.CENSOR_DRONE -> Color(0xFF64748B)
                 EnemyType.FITNESS_RAIDER -> Color(0xFF8B5CF6)
                 EnemyType.SHIELD_ENFORCER -> Color(0xFF00F0FF)
@@ -1054,21 +1171,36 @@ class GameViewModel : ViewModel() {
     fun spawnBoss() {
         val s = _state.value
         val p = s.player
+
+        if (s.bossSummonedOnFloor || s.bossActive) return
+
         val angle = Random.nextFloat() * 6.283f
         val ex = p.x + cos(angle) * 350f
         val ey = p.y + sin(angle) * 350f
 
+        val bossRoll = Random.nextInt(5)
+        val (bossType, bossName, bossColor) = when (bossRoll) {
+            0 -> Triple(EnemyType.FAT_SKUF_BOSS, "Огуречный Скуф-Титан", Color(0xFF10B981))
+            1 -> Triple(EnemyType.USSR_MAN_BOSS, "Мужик из СССР", Color(0xFFEF4444))
+            2 -> Triple(EnemyType.VLAD_MOM_BOSS, "Мама Влада", Color(0xFFE040FB))
+            3 -> Triple(EnemyType.VLAD_DAD_BOSS, "Батя Влада в Майке", Color(0xFFFF9100))
+            else -> Triple(EnemyType.GIRL_5YO_BOSS, "Анимэ-Девочка Star-5", Color(0xFFFF69B4))
+        }
+
+        val bossHp = bossType.baseHp * (1f + p.floor * 0.5f) * s.difficulty.enemyHpMultiplier
+        val bossDamage = 40f + p.floor * 10f
+
         val boss = Enemy(
-            type = EnemyType.GRAND_CENSOR_BOSS,
-            name = "Великий Цензор Марса Mk.800",
+            type = bossType,
+            name = bossName,
             x = ex,
             y = ey,
-            hp = EnemyType.GRAND_CENSOR_BOSS.baseHp + p.floor * 300f,
-            maxHp = EnemyType.GRAND_CENSOR_BOSS.baseHp + p.floor * 300f,
-            speed = EnemyType.GRAND_CENSOR_BOSS.speed,
-            damage = 45f + p.floor * 8f,
+            hp = bossHp,
+            maxHp = bossHp,
+            speed = bossType.speed,
+            damage = bossDamage,
             radius = 48f,
-            color = Color(0xFFFFD700),
+            color = bossColor,
             facingAngle = atan2(p.y - ey, p.x - ex)
         )
 
@@ -1076,7 +1208,8 @@ class GameViewModel : ViewModel() {
             it.copy(
                 enemies = it.enemies + boss,
                 bossActive = true,
-                currentPunchline = "ВНИМАНИЕ! БОСС ЦЕНЗУРЫ ВТОРГСЯ НА ЭТАЖ! ВЫШИБЕМ ЕГО С МАРСА!",
+                bossSummonedOnFloor = true,
+                currentPunchline = "⚠️ ВНИМАНИЕ! БОСС $bossName ВТОРГСЯ НА ЭТАЖ ${p.floor}!",
                 showSpeechBubble = true
             )
         }
@@ -1185,6 +1318,11 @@ class GameViewModel : ViewModel() {
             TalentType.HYPE -> t.hypeRateTier
             TalentType.GREED -> t.greedTier
             TalentType.VAMPIRISM -> t.vampirismTier
+            TalentType.ARMOR -> t.armorTier
+            TalentType.CRIT_CHANCE -> t.critChanceTier
+            TalentType.CRIT_DAMAGE -> t.critDamageTier
+            TalentType.SPEED -> t.speedTier
+            TalentType.BOSS_SLAYER -> t.bossSlayerTier
         }
         if (currentTier >= talentType.maxTier) return
 
@@ -1203,6 +1341,11 @@ class GameViewModel : ViewModel() {
                 TalentType.HYPE -> t.copy(hypeRateTier = t.hypeRateTier + 1)
                 TalentType.GREED -> t.copy(greedTier = t.greedTier + 1)
                 TalentType.VAMPIRISM -> t.copy(vampirismTier = t.vampirismTier + 1)
+                TalentType.ARMOR -> t.copy(armorTier = t.armorTier + 1)
+                TalentType.CRIT_CHANCE -> t.copy(critChanceTier = t.critChanceTier + 1)
+                TalentType.CRIT_DAMAGE -> t.copy(critDamageTier = t.critDamageTier + 1)
+                TalentType.SPEED -> t.copy(speedTier = t.speedTier + 1)
+                TalentType.BOSS_SLAYER -> t.copy(bossSlayerTier = t.bossSlayerTier + 1)
             }
 
             p.maxHp = 250f + newTalents.getBonusMaxHp()
@@ -1320,9 +1463,21 @@ class GameViewModel : ViewModel() {
     }
 
     fun nextFloor() {
-        val currentFloor = _state.value.player.floor
-        val nextF = currentFloor + 1
+        val s = _state.value
+        val p = s.player
+        if (!s.bossSummonedOnFloor || s.bossActive || s.enemies.isNotEmpty()) {
+            vibrate(30)
+            _state.update {
+                it.copy(
+                    currentPunchline = "Лифт заблокирован! Сначала вызовите и одолейте Босса этажа!",
+                    showSpeechBubble = true
+                )
+            }
+            speechCooldown = 3f
+            return
+        }
 
+        val nextF = p.floor + 1
         _state.update {
             it.copy(
                 isTransitioningFloor = true,
@@ -1334,22 +1489,30 @@ class GameViewModel : ViewModel() {
             vibrate(100)
             kotlinx.coroutines.delay(1200)
 
-            val p = _state.value.player
-            p.floor = nextF
-            p.hp = p.maxHp
+            val pState = _state.value.player
+            pState.floor = nextF
+            pState.hp = pState.maxHp
+            pState.x = (Random.nextFloat() * 400f - 200f)
+            pState.y = (Random.nextFloat() * 400f - 200f)
+
+            val newWaveTarget = 10 + nextF * 4
 
             _state.update {
                 it.copy(
                     isTransitioningFloor = false,
                     enemies = emptyList(),
                     projectiles = emptyList(),
+                    bossActive = false,
+                    bossSummonedOnFloor = false,
+                    floorWaveTarget = newWaveTarget,
+                    floorEnemiesDefeated = 0,
                     worldArtifacts = ProceduralWorld.generateWorldArtifactsForFloor(nextF),
-                    currentPunchline = "ЛИФТ ПРИБЫЛ! ЭТАЖ $nextF ИЗ 800! ВЛАДИК ПОКОРЯЕТ МАРС!",
+                    currentPunchline = "ЛИФТ ПРИБЫЛ! ЭТАЖ $nextF! ВЛАДИК ПОКОРЯЕТ МАРС!",
                     showSpeechBubble = true
                 )
             }
             speechCooldown = 4f
-            spawnEnemiesForWave(6)
+            spawnEnemiesForWave(newWaveTarget)
             saveCurrentGame()
         }
     }
@@ -1449,8 +1612,23 @@ class GameViewModel : ViewModel() {
                     )
                 }
             }
-            speechCooldown = 5f
-            saveCurrentGame()
+        }
+    }
+
+    fun rejectNogAiItem() {
+        val s = _state.value
+        val p = s.player
+        val refundGold = 150
+        p.gold += refundGold
+        vibrate(30)
+        _state.update {
+            it.copy(
+                player = p,
+                generatedNogAiWeapon = null,
+                generatedNogAiArtifact = null,
+                currentPunchline = "Предмет утилизирован в золотую пыль! Компенсация: +150 💰",
+                showSpeechBubble = true
+            )
         }
     }
 
