@@ -1,0 +1,6 @@
+{
+  "name": "MARS WORLD: РОГАЛИК",
+  "description": "2D пиксельный рогалик в открытом мире Марса: заставка PRIDE GAYS STUDIO, рэпер Владик, смена суток, крафт и эпические боссы.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
