@@ -49,6 +49,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.res.imageResource
+import com.example.R
 import com.example.ui.theme.CyberCyan
 import com.example.ui.theme.MartianGold
 import com.example.ui.theme.NeonGlamPink
@@ -63,6 +66,21 @@ fun GameWorldScreen(
     viewModel: GameViewModel
 ) {
     val state by viewModel.state.collectAsState()
+
+    // Load sprite sheets and weapon textures
+    val activeSkinBitmap = when (state.player.activeSkin) {
+        VladSkin.GAY_CAR -> ImageBitmap.imageResource(R.drawable.vlad_skin_gaycar)
+        VladSkin.UTENOK -> ImageBitmap.imageResource(R.drawable.vlad_skin_utenok)
+        VladSkin.FATHER -> ImageBitmap.imageResource(R.drawable.vlad_skin_father)
+        VladSkin.PINK_FUR -> ImageBitmap.imageResource(R.drawable.vlad_skin_pinkfur)
+        VladSkin.HEADPHONES -> ImageBitmap.imageResource(R.drawable.vlad_skin_headphones)
+        VladSkin.LOLLY_HOLLY -> ImageBitmap.imageResource(R.drawable.vlad_skin_lolly)
+    }
+
+    val companionMuscleBitmap = ImageBitmap.imageResource(R.drawable.npc_companion_muscle)
+    val weaponBdsmBitmap = ImageBitmap.imageResource(R.drawable.tex_weapons_bdsm)
+    val weaponUltraGayBitmap = ImageBitmap.imageResource(R.drawable.tex_weapons_ultragay)
+    val weaponSheet3Bitmap = ImageBitmap.imageResource(R.drawable.tex_weapons_sheet3)
 
     // 60 FPS update loop
     LaunchedEffect(Unit) {
@@ -150,11 +168,18 @@ fun GameWorldScreen(
                 PixelRenderer.drawDroppedItem(this, item, sx, sy, timeSec)
             }
 
+            // 4b. Draw Ground Hazards (White Slime Puddles)
+            state.groundHazards.forEach { hazard ->
+                val sx = cameraCenterX + (hazard.x - p.x)
+                val sy = cameraCenterY + (hazard.y - p.y)
+                PixelRenderer.drawGroundHazard(this, hazard, sx, sy, timeSec)
+            }
+
             // 5. Draw Hypercars
             state.hypercars.forEach { car ->
                 val sx = cameraCenterX + (car.x - p.x)
                 val sy = cameraCenterY + (car.y - p.y)
-                PixelRenderer.drawHypercar(this, car, sx, sy)
+                PixelRenderer.drawHypercar(this, car, sx, sy, state.carCustomization, state.carUpgrades)
             }
 
             // 6. Draw VlaDick
@@ -163,14 +188,24 @@ fun GameWorldScreen(
                 player = p,
                 screenX = cameraCenterX,
                 screenY = cameraCenterY,
-                timeSec = timeSec
+                timeSec = timeSec,
+                skinBitmap = activeSkinBitmap,
+                weaponBdsmBitmap = weaponBdsmBitmap,
+                weaponUltraGayBitmap = weaponUltraGayBitmap
             )
 
             // Active Companion Runner
             p.activeCompanion?.let { companion ->
                 val sx = cameraCenterX + (companion.x - p.x)
                 val sy = cameraCenterY + (companion.y - p.y)
-                PixelRenderer.drawActiveCompanionRunner(this, companion, sx, sy, timeSec)
+                PixelRenderer.drawActiveCompanionRunner(
+                    drawScope = this,
+                    companion = companion,
+                    screenX = sx,
+                    screenY = sy,
+                    timeSec = timeSec,
+                    companionBitmap = companionMuscleBitmap
+                )
             }
 
             // 7. Draw Enemies
@@ -184,8 +219,15 @@ fun GameWorldScreen(
             state.projectiles.forEach { proj ->
                 val sx = cameraCenterX + (proj.x - p.x)
                 val sy = cameraCenterY + (proj.y - p.y)
-                drawCircle(proj.color, proj.radius, Offset(sx, sy))
-                drawCircle(Color.White, proj.radius * 0.4f, Offset(sx, sy))
+                PixelRenderer.drawProjectile(
+                    drawScope = this,
+                    proj = proj,
+                    screenX = sx,
+                    screenY = sy,
+                    timeSec = timeSec,
+                    weaponBdsmBitmap = weaponBdsmBitmap,
+                    weaponUltraGayBitmap = weaponUltraGayBitmap
+                )
             }
 
             // 9. Draw Particles
@@ -403,10 +445,19 @@ fun GameWorldScreen(
                     }
                 }
 
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("🪙 ${p.gold}", color = MartianGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Text("💎 ${p.diamonds}", color = CyberCyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Text("⚡ ${p.batteries}", color = Color(0xFF10B981), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Box {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("💰 ${p.gold}", color = MartianGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("💎 ${p.diamonds}", color = CyberCyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("🔋 ${p.batteries}", color = Color(0xFF10B981), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    CurrencyFloatingBadges(
+                        deltas = state.currencyDeltas,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 45.dp)
+                    )
                 }
             }
 
@@ -629,22 +680,29 @@ fun GameWorldScreen(
                     }
 
                     // Main Attack Button
+                    val activeWeps = p.getEffectiveEquippedWeapons()
+                    val attackColors = if (activeWeps.size > 1) {
+                        listOf(MartianGold, NeonGlamPink, CyberCyan)
+                    } else {
+                        listOf(p.equippedWeapon.color, Color(0xFF880044))
+                    }
                     Box(
                         modifier = Modifier
                             .size(76.dp)
                             .clip(CircleShape)
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(p.equippedWeapon.color, Color(0xFF880044))
-                                )
-                            )
+                            .background(Brush.radialGradient(attackColors))
                             .border(3.dp, Color.White, CircleShape)
                             .clickable { viewModel.performAttack() }
                             .testTag("attack_button"),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("УДАР", color = Color.White, fontWeight = FontWeight.Black, fontSize = 14.sp)
+                            Text(
+                                if (activeWeps.size > 1) "ЗАЛП (${activeWeps.size})" else "УДАР",
+                                color = Color.White,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp
+                            )
                             Text("💥", fontSize = 14.sp)
                         }
                     }
@@ -677,7 +735,7 @@ fun GameWorldScreen(
                 player = p,
                 recipes = state.availableRecipes,
                 onCraft = { recipe -> viewModel.craftRecipe(recipe) },
-                onEquipWeapon = { weapon -> viewModel.equipWeapon(weapon) },
+                onEquipWeapon = { weapon -> viewModel.toggleEquipWeapon(weapon) },
                 onClose = { viewModel.closeInventory() }
             )
         }

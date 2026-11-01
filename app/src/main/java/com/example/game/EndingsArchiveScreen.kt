@@ -16,8 +16,14 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -39,23 +45,46 @@ fun EndingsArchiveScreen(
     onBack: () -> Unit
 ) {
     val allEndings = ProceduralWorld.all100Endings
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredEndings = remember(searchQuery, allEndings, unlockedEndingIds) {
+        if (searchQuery.isBlank()) {
+            allEndings
+        } else {
+            val q = searchQuery.trim().lowercase()
+            allEndings.filter { ending ->
+                val isUnlocked = unlockedEndingIds.contains(ending.id)
+                ending.id.toString().contains(q) ||
+                (isUnlocked && ending.title.lowercase().contains(q)) ||
+                (isUnlocked && ending.description.lowercase().contains(q))
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        SpaceDark,
-                        Color(0xFF1B0B33),
-                        Color(0xFF0F041D)
-                    )
-                )
-            )
-            .statusBarsPadding()
-            .padding(16.dp)
             .testTag("endings_archive_screen")
     ) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.bg_main_menu),
+            contentDescription = "Background",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xEE0F041D))
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(16.dp)
+        ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Header
             Row(
@@ -65,7 +94,7 @@ fun EndingsArchiveScreen(
             ) {
                 Column {
                     Text(
-                        text = "ХРОНИКИ 100 КОНЦОВОК",
+                        text = "ХРОНИКИ 1111 КОНЦОВОК",
                         color = MartianGold,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
@@ -89,7 +118,7 @@ fun EndingsArchiveScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Progress Banner
             Box(
@@ -97,7 +126,7 @@ fun EndingsArchiveScreen(
                     .fillMaxWidth()
                     .background(SpaceSurface, RoundedCornerShape(12.dp))
                     .border(1.dp, NeonGlamPink, RoundedCornerShape(12.dp))
-                    .padding(14.dp)
+                    .padding(12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -106,7 +135,7 @@ fun EndingsArchiveScreen(
                 ) {
                     Column {
                         Text("ПРОГРЕСС СЮЖЕТА:", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Text("В каждой концовке Владик празднует победу над цензорами!", color = Color(0xFFCBD5E1), fontSize = 10.sp)
+                        Text("В каждой концовке Владик празднует победу над натуралами!", color = Color(0xFFCBD5E1), fontSize = 10.sp)
                     }
 
                     Box(
@@ -115,7 +144,7 @@ fun EndingsArchiveScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            "${unlockedEndingIds.size} / 100",
+                            "${unlockedEndingIds.size} / 1111",
                             color = Color.Black,
                             fontWeight = FontWeight.Black,
                             fontSize = 13.sp
@@ -124,14 +153,34 @@ fun EndingsArchiveScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // List of 100 Endings
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Поиск среди 1111 финалов (номер, босс)...", color = Color(0xFF64748B), fontSize = 12.sp) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = CyberCyan,
+                    unfocusedBorderColor = Color(0xFF334155),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = SpaceSurface,
+                    unfocusedContainerColor = SpaceSurface
+                )
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // List of 1111 Endings
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(allEndings) { ending ->
+                items(filteredEndings) { ending ->
                     val isUnlocked = unlockedEndingIds.contains(ending.id)
 
                     Box(
@@ -172,7 +221,7 @@ fun EndingsArchiveScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = if (isUnlocked) ending.description else "Побеждайте боссов на этажах особняка и ведите диалоги с NPC Шефом Маркусом и DJ Маликом для открытия.",
+                                text = if (isUnlocked) ending.description else "Побеждайте боссов на этажах особняка и прокачивайте таланты Влада в игре для открытия.",
                                 color = if (isUnlocked) Color(0xFFE2E8F0) else Color(0xFF475569),
                                 fontSize = 11.sp,
                                 lineHeight = 15.sp
@@ -184,3 +233,6 @@ fun EndingsArchiveScreen(
         }
     }
 }
+}
+
+

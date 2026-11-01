@@ -237,8 +237,9 @@ fun CraftingModal(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         item {
+                            val activeCount = player.getEffectiveEquippedWeapons().size
                             Text(
-                                "ЭКИПИРОВАННОЕ ОРУЖИЕ",
+                                "АКТИВНЫЕ СЛОТЫ ОРУЖИЯ ($activeCount НАДЕТО — СТРЕЛЯЮТ ОДНОВРЕМЕННО!)",
                                 color = MartianGold,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
@@ -246,7 +247,8 @@ fun CraftingModal(
                         }
 
                         items(player.inventoryWeapons) { weapon ->
-                            val isEquipped = weapon.id == player.equippedWeapon.id
+                            val activeList = player.getEffectiveEquippedWeapons()
+                            val isEquipped = activeList.any { it.id == weapon.id }
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -273,16 +275,20 @@ fun CraftingModal(
                                         Text(weapon.description, color = Color(0xFFCBD5E1), fontSize = 11.sp)
                                     }
 
-                                    if (isEquipped) {
-                                        Text("В РУКАХ", color = MartianGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                    } else {
-                                        Button(
-                                            onClick = { onEquipWeapon(weapon) },
-                                            colors = ButtonDefaults.buttonColors(containerColor = NeonPurple),
-                                            shape = RoundedCornerShape(8.dp)
-                                        ) {
-                                            Text("ВЗЯТЬ", fontSize = 11.sp)
-                                        }
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    Button(
+                                        onClick = { onEquipWeapon(weapon) },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (isEquipped) Color(0xFF10B981) else NeonPurple
+                                        ),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            if (isEquipped) "В РУКАХ ✓ (СНЯТЬ)" else "+ В СЛОТ",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
                                 }
                             }

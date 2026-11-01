@@ -57,7 +57,14 @@ data class GameState(
     val isTransitioningFloor: Boolean = false,
     val transitionFloorNumber: Int = 1,
     val npcSearchQuery: String = "",
-    val bossSummonedOnFloor: Boolean = false
+    val bossSummonedOnFloor: Boolean = false,
+    val groundHazards: List<GroundHazard> = emptyList(),
+    val carUpgrades: CarUpgrades = CarUpgrades(),
+    val carCustomization: CarCustomization = CarCustomization.createDefault(),
+    val isGarageOpen: Boolean = false,
+    val currencyDeltas: List<CurrencyDelta> = emptyList(),
+    val activeSkin: VladSkin = VladSkin.GAY_CAR,
+    val isWardrobeOpen: Boolean = false
 )
 
 class GameViewModel : ViewModel() {
@@ -99,6 +106,7 @@ class GameViewModel : ViewModel() {
             it.copy(
                 player = it.player.copy(
                     equippedWeapon = initialWeapon,
+                    equippedWeapons = mutableListOf(initialWeapon),
                     inventoryWeapons = mutableListOf(initialWeapon),
                     equippedArtifacts = mutableListOf(initialArtifact)
                 )
@@ -131,6 +139,9 @@ class GameViewModel : ViewModel() {
         }
 
         val baseMaxHp = 250f + loadedTalents.getBonusMaxHp()
+        val loadedCarUpgrades = SaveManager.loadCarUpgrades(context)
+        val loadedCarCustom = SaveManager.loadCarCustomization(context)
+        val loadedSkin = SaveManager.loadActiveSkin(context)
 
         _state.update {
             it.copy(
@@ -138,6 +149,9 @@ class GameViewModel : ViewModel() {
                 unlockedEndings = mergedEndings,
                 talents = loadedTalents,
                 quests = updatedQuests,
+                carUpgrades = loadedCarUpgrades,
+                carCustomization = loadedCarCustom,
+                activeSkin = loadedSkin,
                 player = it.player.copy(
                     maxHp = baseMaxHp,
                     hp = baseMaxHp.coerceAtLeast(it.player.hp)
@@ -213,7 +227,7 @@ class GameViewModel : ViewModel() {
         val initialWeapon = Weapon(
             type = if (starterBonus) WeaponType.PLATINUM_BLASTER else WeaponType.RUBBER_BAT,
             name = if (starterBonus) "Платиновый Бластер Басов" else "Резиновая Булава Хайпа",
-            description = if (starterBonus) "Ударные сверхзвуковые частоты сжигают микросхемы цензоров." else "Фирменное розовое оружие Владика, оглушающее завистников.",
+            description = if (starterBonus) "Ударные сверхзвуковые частоты сжигают микросхемы натуралов." else "Фирменное розовое оружие Владика, оглушающее завистников.",
             damage = if (starterBonus) 90f else 50f,
             attackSpeed = 2.5f,
             range = if (starterBonus) 300f else 90f,
@@ -245,6 +259,7 @@ class GameViewModel : ViewModel() {
                     batteries = if (starterBonus) 10 else 5,
                     floor = 1,
                     equippedWeapon = initialWeapon,
+                    equippedWeapons = mutableListOf(initialWeapon),
                     inventoryWeapons = mutableListOf(initialWeapon),
                     equippedArtifacts = mutableListOf(initialArtifact)
                 ),
@@ -360,139 +375,246 @@ class GameViewModel : ViewModel() {
     fun performAttack() {
         val s = _state.value
         val p = s.player
-        val w = p.equippedWeapon
-        val angle = p.facingAngle
+        val activeWeapons = p.getEffectiveEquippedWeapons()
+        val baseAngle = p.facingAngle
 
         vibrate(20)
 
-        var totalDamage = w.damage
-        p.equippedArtifacts.forEach { totalDamage += it.bonusDamage }
+        var bonusArtifactDamage = 0f
+        p.equippedArtifacts.forEach { bonusArtifactDamage += it.bonusDamage }
 
-        when (w.type) {
-            WeaponType.RUBBER_BAT -> {
-                val hitEnemies = mutableListOf<String>()
-                val newParticles = mutableListOf<Particle>()
-                val newPopups = mutableListOf<DamagePopup>()
-                val updatedEnemies = s.enemies.map { enemy ->
-                    val dx = enemy.x - p.x
-                    val dy = enemy.y - p.y
-                    val dist = sqrt(dx * dx + dy * dy)
-                    if (dist < w.range + enemy.radius) {
-                        val enemyAngle = atan2(dy, dx)
-                        var angleDiff = kotlin.math.abs(enemyAngle - angle)
-                        if (angleDiff > Math.PI) angleDiff = (2 * Math.PI - angleDiff).toFloat()
-                        if (angleDiff < 1.3f) {
-                            hitEnemies.add(enemy.id)
-                            val toPlayerAngle = atan2(p.y - enemy.y, p.x - enemy.x)
-                            var shieldDiff = kotlin.math.abs(toPlayerAngle - enemy.facingAngle)
-                            if (shieldDiff > Math.PI) shieldDiff = (2 * Math.PI - shieldDiff).toFloat()
-                            val isBlocked = enemy.hasShield && shieldDiff < 1.1f
+        var currentEnemies = s.enemies
+        val newProjectiles = mutableListOf<Projectile>()
+        val newParticles = mutableListOf<Particle>()
+        val newPopups = mutableListOf<DamagePopup>()
+        var additionalScreenShake = 2f
 
-                            if (isBlocked) {
-                                newPopups.add(
-                                    DamagePopup(enemy.x, enemy.y - 20f, "ЩИТ БЛОК! ⚡", Color(0xFF00F0FF))
-                                )
-                                for (i in 0..3) {
-                                    newParticles.add(Particle(enemy.x, enemy.y, (Random.nextFloat() - 0.5f) * 80f, (Random.nextFloat() - 0.5f) * 80f, Color(0xFF00F0FF), 5f, 0.25f, 0.25f))
-                                }
-                                enemy
-                            } else {
-                                val remainingHp = enemy.hp - totalDamage
-                                enemy.x += cos(angle) * w.knockback * 0.4f
-                                enemy.y += sin(angle) * w.knockback * 0.4f
-                                newPopups.add(
-                                    DamagePopup(
-                                        x = enemy.x,
-                                        y = enemy.y - 20f,
-                                        text = "ПИСК! -${totalDamage.toInt()}",
-                                        color = Color(0xFFFF1493),
-                                        isCrit = true
-                                    )
-                                )
-                                for (i in 0..4) {
-                                    newParticles.add(
-                                        Particle(
+        activeWeapons.forEachIndexed { index, w ->
+            val angleOffset = if (activeWeapons.size > 1) {
+                (index - (activeWeapons.size - 1) / 2f) * 0.15f
+            } else 0f
+            val angle = baseAngle + angleOffset
+            val totalDamage = (w.damage + bonusArtifactDamage) * s.talents.getDamageMultiplier()
+
+            when (w.type) {
+                WeaponType.RUBBER_BAT -> {
+                    val hitEnemies = mutableListOf<String>()
+                    currentEnemies = currentEnemies.map { enemy ->
+                        val dx = enemy.x - p.x
+                        val dy = enemy.y - p.y
+                        val dist = sqrt(dx * dx + dy * dy)
+                        if (dist < w.range + enemy.radius) {
+                            val enemyAngle = atan2(dy, dx)
+                            var angleDiff = kotlin.math.abs(enemyAngle - angle)
+                            if (angleDiff > Math.PI) angleDiff = (2 * Math.PI - angleDiff).toFloat()
+                            if (angleDiff < 1.3f) {
+                                hitEnemies.add(enemy.id)
+                                val toPlayerAngle = atan2(p.y - enemy.y, p.x - enemy.x)
+                                var shieldDiff = kotlin.math.abs(toPlayerAngle - enemy.facingAngle)
+                                if (shieldDiff > Math.PI) shieldDiff = (2 * Math.PI - shieldDiff).toFloat()
+                                val isBlocked = enemy.hasShield && shieldDiff < 1.1f
+
+                                if (isBlocked) {
+                                    newPopups.add(DamagePopup(enemy.x, enemy.y - 20f, "ЩИТ БЛОК! ⚡", Color(0xFF00F0FF)))
+                                    for (i in 0..3) {
+                                        newParticles.add(Particle(enemy.x, enemy.y, (Random.nextFloat() - 0.5f) * 80f, (Random.nextFloat() - 0.5f) * 80f, Color(0xFF00F0FF), 5f, 0.25f, 0.25f))
+                                    }
+                                    enemy
+                                } else {
+                                    val remainingHp = enemy.hp - totalDamage
+                                    enemy.x += cos(angle) * w.knockback * 0.4f
+                                    enemy.y += sin(angle) * w.knockback * 0.4f
+                                    newPopups.add(
+                                        DamagePopup(
                                             x = enemy.x,
-                                            y = enemy.y,
-                                            vx = (Random.nextFloat() - 0.5f) * 120f,
-                                            vy = (Random.nextFloat() - 0.5f) * 120f,
-                                            color = listOf(Color(0xFFFF007F), Color(0xFFFFD700), Color(0xFF00F0FF)).random(),
-                                            size = 5f,
-                                            lifetime = 0.4f,
-                                            maxLifetime = 0.4f
+                                            y = enemy.y - 20f,
+                                            text = "ПИСК! -${totalDamage.toInt()}",
+                                            color = Color(0xFFFF1493),
+                                            isCrit = true
                                         )
                                     )
+                                    for (i in 0..4) {
+                                        newParticles.add(
+                                            Particle(
+                                                x = enemy.x,
+                                                y = enemy.y,
+                                                vx = (Random.nextFloat() - 0.5f) * 120f,
+                                                vy = (Random.nextFloat() - 0.5f) * 120f,
+                                                color = listOf(Color(0xFFFF007F), Color(0xFFFFD700), Color(0xFF00F0FF)).random(),
+                                                size = 5f,
+                                                lifetime = 0.4f,
+                                                maxLifetime = 0.4f
+                                            )
+                                        )
+                                    }
+                                    enemy.copy(hp = remainingHp)
                                 }
-                                enemy.copy(hp = remainingHp)
-                            }
+                            } else enemy
                         } else enemy
-                    } else enemy
+                    }
+                    if (hitEnemies.isNotEmpty()) {
+                        p.hypeEnergy = (p.hypeEnergy + 10f).coerceAtMost(100f)
+                        additionalScreenShake += 4f
+                    }
                 }
 
-                if (hitEnemies.isNotEmpty()) {
-                    p.hypeEnergy = (p.hypeEnergy + 12f).coerceAtMost(100f)
-                }
-
-                _state.update {
-                    it.copy(
-                        enemies = updatedEnemies,
-                        particles = it.particles + newParticles,
-                        damagePopups = it.damagePopups + newPopups,
-                        screenShake = if (hitEnemies.isNotEmpty()) 6f else 2f
-                    )
-                }
-            }
-
-            WeaponType.GLAM_WHIP -> {
-                val hitEnemies = mutableListOf<String>()
-                val newPopups = mutableListOf<DamagePopup>()
-                val newParticles = mutableListOf<Particle>()
-                val updatedEnemies = s.enemies.map { enemy ->
-                    val dx = enemy.x - p.x
-                    val dy = enemy.y - p.y
-                    val dist = sqrt(dx * dx + dy * dy)
-                    if (dist < w.range + enemy.radius) {
-                        hitEnemies.add(enemy.id)
-                        val remainingHp = enemy.hp - totalDamage
-                        newPopups.add(
-                            DamagePopup(x = enemy.x, y = enemy.y - 20f, text = "-${totalDamage.toInt()} ⚡", color = Color(0xFFC084FC))
-                        )
-                        for (i in 0..3) {
-                            newParticles.add(
-                                Particle(enemy.x, enemy.y, (Random.nextFloat() - 0.5f) * 100f, (Random.nextFloat() - 0.5f) * 100f, Color(0xFF8B5CF6), 5f, 0.3f, 0.3f)
+                WeaponType.GLAM_WHIP -> {
+                    val hitEnemies = mutableListOf<String>()
+                    currentEnemies = currentEnemies.map { enemy ->
+                        val dx = enemy.x - p.x
+                        val dy = enemy.y - p.y
+                        val dist = sqrt(dx * dx + dy * dy)
+                        if (dist < w.range + enemy.radius) {
+                            hitEnemies.add(enemy.id)
+                            val remainingHp = enemy.hp - totalDamage
+                            newPopups.add(
+                                DamagePopup(x = enemy.x, y = enemy.y - 20f, text = "-${totalDamage.toInt()} ⚡", color = Color(0xFFC084FC))
                             )
-                        }
-                        enemy.copy(hp = remainingHp)
-                    } else enemy
+                            for (i in 0..3) {
+                                newParticles.add(
+                                    Particle(enemy.x, enemy.y, (Random.nextFloat() - 0.5f) * 100f, (Random.nextFloat() - 0.5f) * 100f, Color(0xFF8B5CF6), 5f, 0.3f, 0.3f)
+                                )
+                            }
+                            enemy.copy(hp = remainingHp)
+                        } else enemy
+                    }
+                    if (hitEnemies.isNotEmpty()) {
+                        p.hypeEnergy = (p.hypeEnergy + 12f).coerceAtMost(100f)
+                        additionalScreenShake += 3f
+                    }
                 }
-                if (hitEnemies.isNotEmpty()) p.hypeEnergy = (p.hypeEnergy + 15f).coerceAtMost(100f)
-                _state.update {
-                    it.copy(
-                        enemies = updatedEnemies,
-                        damagePopups = it.damagePopups + newPopups,
-                        particles = it.particles + newParticles,
-                        screenShake = 5f
+
+                WeaponType.PINK_SHOCKER, WeaponType.AUTOTUNE_MIC, WeaponType.PLATINUM_BLASTER -> {
+                    val projSpeed = 480f
+                    newProjectiles.add(
+                        Projectile(
+                            x = p.x + cos(angle) * 32f,
+                            y = p.y + sin(angle) * 32f,
+                            vx = cos(angle) * projSpeed,
+                            vy = sin(angle) * projSpeed,
+                            damage = totalDamage,
+                            radius = if (w.type == WeaponType.PLATINUM_BLASTER) 16f else if (w.type == WeaponType.AUTOTUNE_MIC) 14f else 8f,
+                            color = w.color,
+                            isPlayer = true,
+                            lifetime = 1.3f,
+                            projectileType = ProjectileType.STANDARD
+                        )
+                    )
+                }
+
+                WeaponType.EXPLODING_BLACK_MAN -> {
+                    val projSpeed = 440f
+                    newProjectiles.add(
+                        Projectile(
+                            x = p.x + cos(angle) * 32f,
+                            y = p.y + sin(angle) * 32f,
+                            vx = cos(angle) * projSpeed,
+                            vy = sin(angle) * projSpeed,
+                            damage = totalDamage * 1.25f,
+                            radius = 16f,
+                            color = Color.Black,
+                            isPlayer = true,
+                            lifetime = 1.4f,
+                            projectileType = ProjectileType.EXPLODING_MAN
+                        )
+                    )
+                }
+
+                WeaponType.RAINBOW_LGBT_FLAG -> {
+                    val projSpeed = 460f
+                    newProjectiles.add(
+                        Projectile(
+                            x = p.x + cos(angle) * 32f,
+                            y = p.y + sin(angle) * 32f,
+                            vx = cos(angle) * projSpeed,
+                            vy = sin(angle) * projSpeed,
+                            damage = totalDamage,
+                            radius = 16f,
+                            color = Color(0xFFFF007F),
+                            isPlayer = true,
+                            lifetime = 1.4f,
+                            projectileType = ProjectileType.RAINBOW_FLAG
+                        )
+                    )
+                }
+
+                WeaponType.CLUSTER_PINK_PHALLUS -> {
+                    val projSpeed = 430f
+                    newProjectiles.add(
+                        Projectile(
+                            x = p.x + cos(angle) * 32f,
+                            y = p.y + sin(angle) * 32f,
+                            vx = cos(angle) * projSpeed,
+                            vy = sin(angle) * projSpeed,
+                            damage = totalDamage,
+                            radius = 16f,
+                            color = Color(0xFFFF1493),
+                            isPlayer = true,
+                            lifetime = 1.3f,
+                            projectileType = ProjectileType.CLUSTER_PHALLUS
+                        )
+                    )
+                }
+
+                WeaponType.EXPLOSIVE_BOOM_BLASTER -> {
+                    // Shockwave around player
+                    additionalScreenShake += 6f
+                    for (enemy in currentEnemies) {
+                        val dx = enemy.x - p.x
+                        val dy = enemy.y - p.y
+                        if (sqrt(dx * dx + dy * dy) < 85f) {
+                            enemy.hp -= totalDamage * 0.5f
+                            newPopups.add(DamagePopup(enemy.x, enemy.y - 20f, "БАХ! -${(totalDamage * 0.5f).toInt()}", Color(0xFFFF4500)))
+                        }
+                    }
+                    for (i in 0..10) {
+                        newParticles.add(Particle(p.x, p.y, (Random.nextFloat() - 0.5f) * 160f, (Random.nextFloat() - 0.5f) * 160f, listOf(Color(0xFFEF4444), Color(0xFFF97316), Color(0xFFFFD700)).random(), 7f, 0.35f, 0.35f))
+                    }
+                    val projSpeed = 480f
+                    newProjectiles.add(
+                        Projectile(
+                            x = p.x + cos(angle) * 32f,
+                            y = p.y + sin(angle) * 32f,
+                            vx = cos(angle) * projSpeed,
+                            vy = sin(angle) * projSpeed,
+                            damage = totalDamage * 1.3f,
+                            radius = 18f,
+                            color = Color(0xFFFF6B00),
+                            isPlayer = true,
+                            lifetime = 1.3f,
+                            projectileType = ProjectileType.EXPLOSION_ORB
+                        )
+                    )
+                }
+
+                WeaponType.WHITE_SLIME_DISPENSER -> {
+                    val projSpeed = 420f
+                    newProjectiles.add(
+                        Projectile(
+                            x = p.x + cos(angle) * 32f,
+                            y = p.y + sin(angle) * 32f,
+                            vx = cos(angle) * projSpeed,
+                            vy = sin(angle) * projSpeed,
+                            damage = totalDamage * 0.85f,
+                            radius = 15f,
+                            color = Color.White,
+                            isPlayer = true,
+                            lifetime = 1.3f,
+                            projectileType = ProjectileType.WHITE_SLIME
+                        )
                     )
                 }
             }
+        }
 
-            WeaponType.PINK_SHOCKER, WeaponType.AUTOTUNE_MIC, WeaponType.PLATINUM_BLASTER -> {
-                val projSpeed = 480f
-                val projectile = Projectile(
-                    x = p.x + cos(angle) * 32f,
-                    y = p.y + sin(angle) * 32f,
-                    vx = cos(angle) * projSpeed,
-                    vy = sin(angle) * projSpeed,
-                    damage = totalDamage,
-                    radius = if (w.type == WeaponType.PLATINUM_BLASTER) 16f else if (w.type == WeaponType.AUTOTUNE_MIC) 14f else 8f,
-                    color = w.color,
-                    isPlayer = true,
-                    lifetime = 1.3f
-                )
-                _state.update {
-                    it.copy(projectiles = it.projectiles + projectile)
-                }
-            }
+        _state.update {
+            it.copy(
+                enemies = currentEnemies,
+                projectiles = it.projectiles + newProjectiles,
+                particles = it.particles + newParticles,
+                damagePopups = it.damagePopups + newPopups,
+                screenShake = (it.screenShake + additionalScreenShake).coerceAtMost(20f)
+            )
         }
     }
 
@@ -503,26 +625,131 @@ class GameViewModel : ViewModel() {
             vibrate(100)
             p.hypeEnergy = 0f
             val angle = p.facingAngle
-            val speed = 800f
+            val upg = s.carUpgrades
+            val speed = 800f + upg.getBonusSpeed()
+            val damage = 696f + upg.getBonusDamage()
+            val lifetime = 2.5f + upg.getBonusLifetime()
             val car = HypercarSummon(
                 x = p.x - cos(angle) * 60f,
                 y = p.y - sin(angle) * 60f,
                 vx = cos(angle) * speed,
                 vy = sin(angle) * speed,
                 angle = angle,
-                lifetime = 2.5f,
-                damage = 696f
+                lifetime = lifetime,
+                damage = damage
             )
 
             _state.update {
                 it.copy(
                     hypercars = it.hypercars + car,
-                    screenShake = 18f,
-                    currentPunchline = "6969-Й ГИПЕРКАР СМЕТАЕТ ВСЁ НА ПУТИ! ВРУМ-ВРУМ!",
+                    screenShake = 18f + (upg.bullbarLevel * 0.01f),
+                    currentPunchline = "6969-Й ГИПЕРКАР [УР. ${upg.getTotalLevel()}] СМЕТАЕТ ВСЁ НА ПУТИ! ВРУМ-ВРУМ!",
                     showSpeechBubble = true
                 )
             }
             speechCooldown = 4f
+        }
+    }
+
+    fun openGarage(open: Boolean) {
+        _state.update { it.copy(isGarageOpen = open) }
+    }
+
+    fun openWardrobe(open: Boolean) {
+        _state.update { it.copy(isWardrobeOpen = open) }
+    }
+
+    fun selectVladSkin(skin: VladSkin) {
+        val unlockedCount = _state.value.unlockedEndings.size
+        if (unlockedCount >= skin.unlockedEndingThreshold) {
+            val p = _state.value.player
+            p.activeSkin = skin
+            _state.update { it.copy(activeSkin = skin, player = p) }
+            appContext?.let { SaveManager.saveActiveSkin(it, skin) }
+            vibrate(50)
+            saveCurrentGame()
+        }
+    }
+
+    fun recordCurrencyDelta(amount: Int, type: String) {
+        val delta = CurrencyDelta(amount = amount, type = type)
+        _state.update { it.copy(currencyDeltas = it.currencyDeltas + delta) }
+    }
+
+    fun setCarPixel(x: Int, y: Int, colorInt: Int) {
+        if (x !in 0 until CarCustomization.CANVAS_SIZE || y !in 0 until CarCustomization.CANVAS_SIZE) return
+        val current = _state.value.carCustomization
+        val updated = current.pixels.toMutableList()
+        val index = y * CarCustomization.CANVAS_SIZE + x
+        updated[index] = colorInt
+        val newCustom = current.copy(pixels = updated)
+        _state.update { it.copy(carCustomization = newCustom) }
+        appContext?.let { SaveManager.saveCarCustomization(it, newCustom) }
+    }
+
+    fun fillCarPixels(startX: Int, startY: Int, fillColor: Int) {
+        if (startX !in 0 until CarCustomization.CANVAS_SIZE || startY !in 0 until CarCustomization.CANVAS_SIZE) return
+        val current = _state.value.carCustomization
+        val targetColor = current.pixels[startY * CarCustomization.CANVAS_SIZE + startX]
+        if (targetColor == fillColor) return
+
+        val grid = current.pixels.toIntArray()
+        val queue = java.util.ArrayDeque<Pair<Int, Int>>()
+        queue.add(Pair(startX, startY))
+
+        while (queue.isNotEmpty()) {
+            val (x, y) = queue.removeFirst()
+            if (x !in 0 until CarCustomization.CANVAS_SIZE || y !in 0 until CarCustomization.CANVAS_SIZE) continue
+            val idx = y * CarCustomization.CANVAS_SIZE + x
+            if (grid[idx] != targetColor) continue
+            grid[idx] = fillColor
+
+            queue.add(Pair(x + 1, y))
+            queue.add(Pair(x - 1, y))
+            queue.add(Pair(x, y + 1))
+            queue.add(Pair(x, y - 1))
+        }
+
+        val newCustom = current.copy(pixels = grid.toList())
+        _state.update { it.copy(carCustomization = newCustom) }
+        appContext?.let { SaveManager.saveCarCustomization(it, newCustom) }
+    }
+
+    fun loadCarPreset(preset: CarCustomization) {
+        _state.update { it.copy(carCustomization = preset) }
+        appContext?.let { SaveManager.saveCarCustomization(it, preset) }
+    }
+
+    fun clearCarCanvas() {
+        val empty = CarCustomization.createEmpty()
+        _state.update { it.copy(carCustomization = empty) }
+        appContext?.let { SaveManager.saveCarCustomization(it, empty) }
+    }
+
+    fun upgradeCarPart(type: CarUpgradeType) {
+        val s = _state.value
+        val p = s.player
+        val currentLvl = s.carUpgrades.getLevel(type)
+        if (currentLvl >= type.maxLevel) return
+
+        val goldCost = s.carUpgrades.getGoldCost(type)
+        val batteryCost = s.carUpgrades.getBatteryCost(type)
+
+        if (p.gold >= goldCost && p.batteries >= batteryCost) {
+            p.gold -= goldCost
+            p.batteries -= batteryCost
+            recordCurrencyDelta(-goldCost, "GOLD")
+            recordCurrencyDelta(-batteryCost, "BATTERIES")
+            vibrate(30)
+
+            val updatedUpgrades = s.carUpgrades.withIncrement(type)
+            _state.update {
+                it.copy(
+                    carUpgrades = updatedUpgrades,
+                    player = p.copy(gold = p.gold, batteries = p.batteries)
+                )
+            }
+            appContext?.let { SaveManager.saveCarUpgrades(it, updatedUpgrades) }
         }
     }
 
@@ -577,7 +804,9 @@ class GameViewModel : ViewModel() {
                 p.activeCompanion = ActiveCompanion(
                     id = npc.id,
                     name = npc.name,
-                    color = npc.color
+                    color = npc.color,
+                    x = p.x - 30f,
+                    y = p.y
                 )
                 vibrate(80)
                 val returnScreen = if (_state.value.screen == GameScreen.VIP_HUB) GameScreen.VIP_HUB else GameScreen.PLAYING
@@ -815,8 +1044,31 @@ class GameViewModel : ViewModel() {
         val newPopups = mutableListOf<DamagePopup>()
         val newDrops = mutableListOf<DroppedItem>()
         val newParticles = mutableListOf<Particle>()
+        val newHazards = mutableListOf<GroundHazard>()
+        val remainingHazards = mutableListOf<GroundHazard>()
+        val spawnedClusterProjectiles = mutableListOf<Projectile>()
+        val newWorldArtifacts = mutableListOf<WorldArtifact>()
 
         val remainingEnemies = s.enemies.toMutableList()
+
+        // Update Ground Hazards (White Slime Puddles)
+        for (hazard in s.groundHazards) {
+            hazard.lifetime -= dt
+            if (hazard.lifetime > 0f) {
+                remainingHazards.add(hazard)
+                // Puddle damages enemies inside it
+                for (enemy in remainingEnemies) {
+                    val hdx = enemy.x - hazard.x
+                    val hdy = enemy.y - hazard.y
+                    if (sqrt(hdx * hdx + hdy * hdy) < hazard.radius + enemy.radius) {
+                        enemy.hp -= hazard.damagePerSec * dt
+                        if (Random.nextInt(100) < 6) {
+                            newPopups.add(DamagePopup(enemy.x, enemy.y - 15f, "СЛИЗЬ! -${(hazard.damagePerSec * 0.4f).toInt()}", Color(0xFFE2E8F0)))
+                        }
+                    }
+                }
+            }
+        }
 
         val updatedProjectiles = (s.projectiles + companionProjectiles).mapNotNull { proj ->
             proj.x += proj.vx * dt
@@ -843,6 +1095,59 @@ class GameViewModel : ViewModel() {
                             newPopups.add(
                                 DamagePopup(enemy.x, enemy.y - 20f, "-${proj.damage.toInt()}", proj.color)
                             )
+
+                            // Trigger projectile special mechanics
+                            when (proj.projectileType) {
+                                ProjectileType.EXPLODING_MAN -> {
+                                    // Black exploding man AoE detonation
+                                    for (other in remainingEnemies) {
+                                        val d2 = sqrt((other.x - proj.x) * (other.x - proj.x) + (other.y - proj.y) * (other.y - proj.y))
+                                        if (d2 < 95f && other.id != enemy.id) {
+                                            other.hp -= proj.damage * 0.8f
+                                            newPopups.add(DamagePopup(other.x, other.y - 20f, "БАБАХ! -${(proj.damage * 0.8f).toInt()}", Color(0xFFFF4500)))
+                                        }
+                                    }
+                                    for (pIdx in 0..12) {
+                                        newParticles.add(Particle(proj.x, proj.y, (Random.nextFloat() - 0.5f) * 220f, (Random.nextFloat() - 0.5f) * 220f, listOf(Color.Black, Color(0xFFFF3300), Color(0xFFFFD700)).random(), 7f, 0.4f, 0.4f))
+                                    }
+                                }
+                                ProjectileType.CLUSTER_PHALLUS -> {
+                                    // Splits into 6 mini cluster phallus projectiles
+                                    for (cIdx in 0..5) {
+                                        val cAngle = (cIdx * Math.PI / 3.0).toFloat()
+                                        spawnedClusterProjectiles.add(
+                                            Projectile(
+                                                x = proj.x,
+                                                y = proj.y,
+                                                vx = cos(cAngle) * 360f,
+                                                vy = sin(cAngle) * 360f,
+                                                damage = proj.damage * 0.4f,
+                                                radius = 8f,
+                                                color = Color(0xFFFF1493),
+                                                isPlayer = true,
+                                                lifetime = 0.6f,
+                                                projectileType = ProjectileType.CLUSTER_MINI
+                                            )
+                                        )
+                                    }
+                                    for (pIdx in 0..8) {
+                                        newParticles.add(Particle(proj.x, proj.y, (Random.nextFloat() - 0.5f) * 150f, (Random.nextFloat() - 0.5f) * 150f, Color(0xFFFF69B4), 6f, 0.3f, 0.3f))
+                                    }
+                                }
+                                ProjectileType.EXPLOSION_ORB -> {
+                                    for (other in remainingEnemies) {
+                                        val d2 = sqrt((other.x - proj.x) * (other.x - proj.x) + (other.y - proj.y) * (other.y - proj.y))
+                                        if (d2 < 80f && other.id != enemy.id) {
+                                            other.hp -= proj.damage * 0.6f
+                                            newPopups.add(DamagePopup(other.x, other.y - 20f, "ВЗРЫВ! -${(proj.damage * 0.6f).toInt()}", Color(0xFFF97316)))
+                                        }
+                                    }
+                                }
+                                ProjectileType.WHITE_SLIME -> {
+                                    newHazards.add(GroundHazard(x = proj.x, y = proj.y, radius = 55f, lifetime = 8.0f))
+                                }
+                                else -> {}
+                            }
                         }
                         break
                     }
@@ -911,11 +1216,14 @@ class GameViewModel : ViewModel() {
                     appContext?.let { SaveManager.saveUnlockedEnding(it, nextEndingId) }
                     updateQuestProgress(QuestType.COMPLETE_ENDINGS, 1)
 
+                    val droppedArt = ProceduralWorld.generateRandomArtifact(p.floor)
+                    newWorldArtifacts.add(WorldArtifact(artifact = droppedArt, x = enemy.x, y = enemy.y))
+
                     _state.update {
                         it.copy(
                             bossActive = false,
                             unlockedEndings = updatedEndings,
-                            currentPunchline = "БОСС ПОВЕРЖЕН! ЭТАЖ ПРОЙДЕН! ОТКРЫТ ФИНАЛ #$nextEndingId!",
+                            currentPunchline = "БОСС ПОВЕРЖЕН! ЭТАЖ ПРОЙДЕН! ВЫПАЛ АРТЕФАКТ '${droppedArt.name}'! ОТКРЫТ ФИНАЛ #$nextEndingId!",
                             showSpeechBubble = true
                         )
                     }
@@ -928,7 +1236,14 @@ class GameViewModel : ViewModel() {
                 val dist = sqrt(dx * dx + dy * dy)
                 if (dist > 10f) {
                     val nightSpeedBuff = if (newTimeOfDay == TimeOfDay.NIGHT) 1.25f else 1.0f
-                    val stepDist = enemy.speed * nightSpeedBuff * dt
+                    // Slow enemies down if in white slime puddle
+                    val inSlime = remainingHazards.any { h ->
+                        val hdx = enemy.x - h.x
+                        val hdy = enemy.y - h.y
+                        sqrt(hdx * hdx + hdy * hdy) < h.radius
+                    }
+                    val slimeSlow = if (inSlime) 0.4f else 1.0f
+                    val stepDist = enemy.speed * nightSpeedBuff * slimeSlow * dt
                     val targetEx = enemy.x + (dx / dist) * stepDist
                     val targetEy = enemy.y + (dy / dist) * stepDist
 
@@ -1079,19 +1394,24 @@ class GameViewModel : ViewModel() {
             spawnSingleEnemy(p.x, p.y, p.floor)
         }
 
+        val nowMs = System.currentTimeMillis()
+        val activeCurrencyDeltas = s.currencyDeltas.filter { nowMs - it.timestamp < 2000 }
         val newShake = (s.screenShake - dt * 25f).coerceAtLeast(0f)
 
         _state.update {
             it.copy(
                 player = p,
                 enemies = aliveEnemies,
-                projectiles = updatedProjectiles,
+                projectiles = updatedProjectiles + spawnedClusterProjectiles,
                 particles = updatedParticles,
                 damagePopups = updatedPopups,
                 droppedItems = remainingDrops + newDrops,
                 hypercars = updatedHypercars,
                 timeOfDay = newTimeOfDay,
-                screenShake = newShake
+                screenShake = newShake,
+                groundHazards = remainingHazards + newHazards,
+                worldArtifacts = if (newWorldArtifacts.isNotEmpty()) it.worldArtifacts + newWorldArtifacts else it.worldArtifacts,
+                currencyDeltas = activeCurrencyDeltas
             )
         }
     }
@@ -1261,9 +1581,25 @@ class GameViewModel : ViewModel() {
     }
 
     fun equipWeapon(weapon: Weapon) {
-        val p = _state.value.player
-        p.equippedWeapon = weapon
-        _state.update { it.copy(player = p) }
+        toggleEquipWeapon(weapon)
+    }
+
+    fun toggleEquipWeapon(weapon: Weapon) {
+        val s = _state.value
+        val p = s.player
+        val currentEquipped = p.getEffectiveEquippedWeapons().toMutableList()
+        val alreadyEquipped = currentEquipped.any { it.id == weapon.id }
+        if (alreadyEquipped) {
+            if (currentEquipped.size > 1) {
+                currentEquipped.removeAll { it.id == weapon.id }
+            }
+        } else {
+            currentEquipped.add(weapon)
+        }
+        p.equippedWeapon = currentEquipped.first()
+        p.equippedWeapons.clear()
+        p.equippedWeapons.addAll(currentEquipped)
+        _state.update { it.copy(player = p.copy()) }
     }
 
     fun restartGame() {
@@ -1332,6 +1668,8 @@ class GameViewModel : ViewModel() {
         if (p.diamonds >= reqDiamonds && p.gold >= reqGold) {
             p.diamonds -= reqDiamonds
             p.gold -= reqGold
+            recordCurrencyDelta(-reqDiamonds, "DIAMONDS")
+            recordCurrencyDelta(-reqGold, "GOLD")
             vibrate(60)
 
             val newTalents = when (talentType) {
@@ -1561,6 +1899,8 @@ class GameViewModel : ViewModel() {
 
             val updatedGold = p.gold - costGold
             val updatedDiamonds = p.diamonds - costDiamonds
+            recordCurrencyDelta(-costGold, "GOLD")
+            recordCurrencyDelta(-costDiamonds, "DIAMONDS")
 
             if (isWeapon) {
                 val weapon = ProceduralWorld.generateRandomWeapon(p.floor)

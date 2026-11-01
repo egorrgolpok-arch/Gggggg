@@ -39,15 +39,17 @@ class MainActivity : ComponentActivity() {
                 val state by gameViewModel.state.collectAsState()
 
                 BackHandler(enabled = state.screen != GameScreen.MAIN_MENU && state.screen != GameScreen.SPLASH) {
-                    when (state.screen) {
-                        GameScreen.TALENT_TREE -> gameViewModel.closeTalentTree()
-                        GameScreen.QUEST_LOG -> gameViewModel.closeQuestLog()
-                        GameScreen.VIP_HUB -> gameViewModel.splashToMainMenu()
-                        GameScreen.INVENTORY -> gameViewModel.closeInventory()
-                        GameScreen.DIALOGUE -> gameViewModel.closeDialogue()
-                        GameScreen.ARTIFACT_INSPECT -> gameViewModel.closeArtifactInspect()
-                        GameScreen.ENDINGS_ARCHIVE -> gameViewModel.closeEndingsArchive()
-                        GameScreen.PLAYING -> {
+                    when {
+                        state.isGarageOpen -> gameViewModel.openGarage(false)
+                        state.isWardrobeOpen -> gameViewModel.openWardrobe(false)
+                        state.screen == GameScreen.TALENT_TREE -> gameViewModel.closeTalentTree()
+                        state.screen == GameScreen.QUEST_LOG -> gameViewModel.closeQuestLog()
+                        state.screen == GameScreen.VIP_HUB || state.screen == GameScreen.GARAGE || state.screen == GameScreen.WARDROBE -> gameViewModel.splashToMainMenu()
+                        state.screen == GameScreen.INVENTORY -> gameViewModel.closeInventory()
+                        state.screen == GameScreen.DIALOGUE -> gameViewModel.closeDialogue()
+                        state.screen == GameScreen.ARTIFACT_INSPECT -> gameViewModel.closeArtifactInspect()
+                        state.screen == GameScreen.ENDINGS_ARCHIVE -> gameViewModel.closeEndingsArchive()
+                        state.screen == GameScreen.PLAYING -> {
                             gameViewModel.saveCurrentGame()
                             gameViewModel.openHub()
                         }
@@ -77,7 +79,7 @@ class MainActivity : ComponentActivity() {
                                 onBack = { gameViewModel.closeEndingsArchive() }
                             )
                         }
-                        GameScreen.VIP_HUB, GameScreen.TALENT_TREE, GameScreen.QUEST_LOG -> {
+                        GameScreen.VIP_HUB, GameScreen.TALENT_TREE, GameScreen.QUEST_LOG, GameScreen.GARAGE, GameScreen.WARDROBE -> {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 HubScreen(
                                     state = state,
@@ -85,6 +87,8 @@ class MainActivity : ComponentActivity() {
                                     onOpenTalents = { gameViewModel.openTalentTree() },
                                     onOpenQuests = { gameViewModel.openQuestLog() },
                                     onOpenEndings = { gameViewModel.openEndingsArchive() },
+                                    onOpenGarage = { gameViewModel.openGarage(true) },
+                                    onOpenWardrobe = { gameViewModel.openWardrobe(true) },
                                     onTalkToNpc = { npc -> gameViewModel.openDialogueWith(npc) },
                                     onHitTrainingDummy = { dmg -> gameViewModel.hitTrainingDummy(dmg) },
                                     onGenerateNogAi = { isWeapon -> gameViewModel.generateNogAiItem(isWeapon) },
@@ -112,6 +116,22 @@ class MainActivity : ComponentActivity() {
                                         quests = state.quests,
                                         onClaimQuest = { quest -> gameViewModel.claimQuestReward(quest) },
                                         onDismiss = { gameViewModel.closeQuestLog() }
+                                    )
+                                }
+
+                                if (state.isGarageOpen || state.screen == GameScreen.GARAGE) {
+                                    com.example.game.GarageModal(
+                                        state = state,
+                                        viewModel = gameViewModel,
+                                        onClose = { gameViewModel.openGarage(false) }
+                                    )
+                                }
+
+                                if (state.isWardrobeOpen || state.screen == GameScreen.WARDROBE) {
+                                    com.example.game.WardrobeModal(
+                                        state = state,
+                                        viewModel = gameViewModel,
+                                        onClose = { gameViewModel.openWardrobe(false) }
                                     )
                                 }
 

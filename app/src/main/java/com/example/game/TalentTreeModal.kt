@@ -65,13 +65,27 @@ fun TalentTreeModal(
                 .clip(RoundedCornerShape(20.dp))
                 .border(2.dp, Brush.linearGradient(listOf(GoldCoin, HotPink, ElectricPurple)), RoundedCornerShape(20.dp))
                 .testTag("talent_tree_modal"),
-            color = SpaceDark
+            color = Color.Transparent
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(18.dp)
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.bg_main_menu),
+                    contentDescription = "Background",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xEE0A0217))
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(18.dp)
+                ) {
                 // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -313,4 +327,5 @@ fun TalentTreeModal(
             }
         }
     }
+}
 }

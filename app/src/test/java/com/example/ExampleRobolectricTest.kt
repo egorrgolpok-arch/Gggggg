@@ -126,12 +126,12 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `test all 100 endings exist with unique descriptions`() {
+    fun `test all 1111 endings exist with unique descriptions`() {
         val endings = ProceduralWorld.all100Endings
-        assertEquals(100, endings.size)
+        assertEquals(1111, endings.size)
         val descriptions = endings.map { it.description }.toSet()
         // Ensure high variety in descriptions
-        assertTrue(descriptions.size >= 50)
+        assertTrue(descriptions.size >= 500)
     }
 
     @Test

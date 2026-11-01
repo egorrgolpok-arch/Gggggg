@@ -129,6 +129,81 @@ object SaveManager {
         val prefs = getPrefs(context)
         return prefs.getStringSet(KEY_CLAIMED_QUESTS, emptySet()) ?: emptySet()
     }
+
+    private const val KEY_CAR_BULLBAR = "car_bullbar"
+    private const val KEY_CAR_SPOILER = "car_spoiler"
+    private const val KEY_CAR_ROCKET = "car_rocket"
+    private const val KEY_CAR_NITRO = "car_nitro"
+    private const val KEY_CAR_ARMOR = "car_armor"
+    private const val KEY_CAR_PIXELS = "car_pixels"
+    private const val KEY_CAR_PRESET_NAME = "car_preset_name"
+
+    fun saveCarUpgrades(context: Context, upgrades: CarUpgrades) {
+        val prefs = getPrefs(context)
+        prefs.edit()
+            .putInt(KEY_CAR_BULLBAR, upgrades.bullbarLevel)
+            .putInt(KEY_CAR_SPOILER, upgrades.spoilerLevel)
+            .putInt(KEY_CAR_ROCKET, upgrades.rocketLevel)
+            .putInt(KEY_CAR_NITRO, upgrades.nitroLevel)
+            .putInt(KEY_CAR_ARMOR, upgrades.armorLevel)
+            .apply()
+    }
+
+    fun loadCarUpgrades(context: Context): CarUpgrades {
+        val prefs = getPrefs(context)
+        return CarUpgrades(
+            bullbarLevel = prefs.getInt(KEY_CAR_BULLBAR, 0),
+            spoilerLevel = prefs.getInt(KEY_CAR_SPOILER, 0),
+            rocketLevel = prefs.getInt(KEY_CAR_ROCKET, 0),
+            nitroLevel = prefs.getInt(KEY_CAR_NITRO, 0),
+            armorLevel = prefs.getInt(KEY_CAR_ARMOR, 0)
+        )
+    }
+
+    fun saveCarCustomization(context: Context, customization: CarCustomization) {
+        val prefs = getPrefs(context)
+        val sb = StringBuilder()
+        for (i in customization.pixels.indices) {
+            sb.append(customization.pixels[i].toUInt().toString(16))
+            if (i < customization.pixels.size - 1) sb.append(",")
+        }
+        prefs.edit()
+            .putString(KEY_CAR_PIXELS, sb.toString())
+            .putString(KEY_CAR_PRESET_NAME, customization.presetName)
+            .apply()
+    }
+
+    fun loadCarCustomization(context: Context): CarCustomization {
+        val prefs = getPrefs(context)
+        val pixelStr = prefs.getString(KEY_CAR_PIXELS, null) ?: return CarCustomization.createDefault()
+        val name = prefs.getString(KEY_CAR_PRESET_NAME, "Кастом") ?: "Кастом"
+        return try {
+            val parts = pixelStr.split(",")
+            if (parts.size == CarCustomization.CANVAS_SIZE * CarCustomization.CANVAS_SIZE) {
+                val list = parts.map { it.toUInt(16).toInt() }
+                CarCustomization(list, name)
+            } else {
+                CarCustomization.createDefault()
+            }
+        } catch (_: Exception) {
+            CarCustomization.createDefault()
+        }
+    }
+
+    private const val KEY_ACTIVE_SKIN = "active_skin"
+
+    fun saveActiveSkin(context: Context, skin: VladSkin) {
+        getPrefs(context).edit().putString(KEY_ACTIVE_SKIN, skin.name).apply()
+    }
+
+    fun loadActiveSkin(context: Context): VladSkin {
+        val name = getPrefs(context).getString(KEY_ACTIVE_SKIN, VladSkin.GAY_CAR.name)
+        return try {
+            VladSkin.valueOf(name ?: VladSkin.GAY_CAR.name)
+        } catch (_: Exception) {
+            VladSkin.GAY_CAR
+        }
+    }
 }
 
 data class SavedGameData(

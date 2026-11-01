@@ -1,5 +1,6 @@
 package com.example.game
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -44,6 +47,7 @@ import com.example.ui.theme.CyberCyan
 import com.example.ui.theme.ElectricPurple
 import com.example.ui.theme.GoldCoin
 import com.example.ui.theme.HotPink
+import com.example.ui.theme.MartianGold
 import com.example.ui.theme.SpaceDark
 import com.example.ui.theme.SurfaceCard
 
@@ -54,6 +58,8 @@ fun HubScreen(
     onOpenTalents: () -> Unit,
     onOpenQuests: () -> Unit,
     onOpenEndings: () -> Unit,
+    onOpenGarage: () -> Unit = {},
+    onOpenWardrobe: () -> Unit = {},
     onTalkToNpc: (FriendlyNPC) -> Unit,
     onHitTrainingDummy: (Float) -> Unit,
     onGenerateNogAi: (Boolean) -> Unit,
@@ -69,17 +75,22 @@ fun HubScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF1E0A3C),
-                        SpaceDark,
-                        Color(0xFF160B2E)
-                    )
-                )
-            )
             .testTag("hub_screen")
     ) {
+        // Full bleed background artwork across all tabs
+        Image(
+            painter = painterResource(id = com.example.R.drawable.bg_main_menu),
+            contentDescription = "Background",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // Dark tint overlay for crisp readable cards
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xEE0D0221))
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -105,48 +116,80 @@ fun HubScreen(
                     )
                 }
 
-                OutlinedButton(
-                    onClick = onMainMenu,
-                    modifier = Modifier.testTag("hub_to_menu_btn"),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text("Меню", fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Button(
+                        onClick = onOpenWardrobe,
+                        modifier = Modifier.testTag("hub_open_wardrobe_btn"),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = HotPink),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text("🥋 Скины", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = onOpenGarage,
+                        modifier = Modifier.testTag("hub_open_garage_btn"),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text("🏎️ Гараж", fontSize = 11.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                        onClick = onMainMenu,
+                        modifier = Modifier.testTag("hub_to_menu_btn"),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text("Меню", fontSize = 11.sp)
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Resource Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SurfaceCard, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("💎", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("${p.diamonds}", fontWeight = FontWeight.Bold, color = CyberCyan, fontSize = 13.sp)
+            // Resource Bar + Floating Currency Badges
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SurfaceCard, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("💎", fontSize = 14.sp)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("${p.diamonds}", fontWeight = FontWeight.Bold, color = CyberCyan, fontSize = 13.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("💰", fontSize = 14.sp)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("${p.gold}", fontWeight = FontWeight.Bold, color = GoldCoin, fontSize = 13.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("🔋", fontSize = 14.sp)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("${p.batteries}", fontWeight = FontWeight.Bold, color = Color(0xFF10B981), fontSize = 13.sp)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("💀", fontSize = 14.sp)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("${p.kills} Kills", fontWeight = FontWeight.Bold, color = HotPink, fontSize = 13.sp)
+                    }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("💰", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("${p.gold}", fontWeight = FontWeight.Bold, color = GoldCoin, fontSize = 13.sp)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("🔋", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("${p.batteries}", fontWeight = FontWeight.Bold, color = Color(0xFF10B981), fontSize = 13.sp)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("💀", fontSize = 14.sp)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("${p.kills} Kills", fontWeight = FontWeight.Bold, color = HotPink, fontSize = 13.sp)
-                }
+
+                // Live Real-Time Animated Deduction Badges
+                CurrencyFloatingBadges(
+                    deltas = state.currencyDeltas,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 34.dp, end = 12.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -158,6 +201,72 @@ fun HubScreen(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Garage 6969 Hypercars Station
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.5.dp, MartianGold.copy(alpha = 0.8f), RoundedCornerShape(14.dp)),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceCard)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .background(Color(0xFF1E1538), CircleShape)
+                                    .border(1.5.dp, MartianGold, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("🏎️", fontSize = 24.sp)
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "ГАРАЖ 6969 ГИПЕРКАРОВ",
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 14.sp,
+                                        color = MartianGold
+                                    )
+                                    Text(
+                                        text = "${state.carUpgrades.getTotalLevel()}/5000 УР.",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = CyberCyan
+                                    )
+                                }
+                                Text(
+                                    text = "Пиксель-Арт студия (32x32), палитра, спойлеры, нитро и дилдо-кенгурятник",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF94A3B8)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Button(
+                                    onClick = onOpenGarage,
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .testTag("garage_station_open_btn"),
+                                    shape = RoundedCornerShape(6.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = HotPink),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                                ) {
+                                    Text("Открыть Студию & Тюнинг", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // nOG AI Generator Station
                 item {
                     Card(
@@ -459,13 +568,13 @@ fun HubScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
                                     Text(
-                                        text = "Архив 100 Концовок Марса",
+                                        text = "Архив 1111 Концовок Марса",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp,
                                         color = ElectricPurple
                                     )
                                     Text(
-                                        text = "Открыто: ${state.unlockedEndings.size} из 100 финалов",
+                                        text = "Открыто: ${state.unlockedEndings.size} из 1111 финалов",
                                         fontSize = 11.sp,
                                         color = Color(0xFFCBD5E1)
                                     )

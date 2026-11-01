@@ -12,7 +12,7 @@ object ItemDatabase {
     val allCraftingRecipes: List<CraftingRecipe> by lazy {
         val list = mutableListOf<CraftingRecipe>()
 
-        // 40 Unique Weapons
+        // Unique Weapons
         val weaponTemplates = listOf(
             Triple(WeaponType.RUBBER_BAT, "Резиновая Булава 'Хайп 800'", "Классика жанра: оглушительный вирусный писк при ударе."),
             Triple(WeaponType.RUBBER_BAT, "Розовый Двойной Биток", "Двусторонняя булава для одновременного разгона толпы хейтеров."),
@@ -20,7 +20,7 @@ object ItemDatabase {
             Triple(WeaponType.RUBBER_BAT, "Титановый Бито-Дилдо 'Батя-Стайл'", "Увесистая модификация от Бати прямо из тюремных мастерских."),
             Triple(WeaponType.RUBBER_BAT, "Булава 'Парижский Поцелуй Жульена'", "Изысканный французский девайс с ароматом марсианской лаванды."),
             Triple(WeaponType.RUBBER_BAT, "Золотая Булава 'Королевский Панч'", "Позолоченное основание с гравировкой 'Владик №1'."),
-            Triple(WeaponType.RUBBER_BAT, "Квантовый Резиновый Сокрушитель", "Вибрирует на частоте 808 баса, расщепляя щиты цензоров."),
+            Triple(WeaponType.RUBBER_BAT, "Квантовый Резиновый Сокрушитель", "Вибрирует на частоте 808 баса, расщепляя щиты натуралов."),
             Triple(WeaponType.RUBBER_BAT, "Неоновая Киянка 'Диско-Драйв'", "Светящаяся булава для ритмичного воспитания завистников."),
 
             Triple(WeaponType.GLAM_WHIP, "Плеть Божественного Глэма", "Удар неоновым хвостом с разрядом цепной молнии."),
@@ -44,20 +44,32 @@ object ItemDatabase {
             Triple(WeaponType.AUTOTUNE_MIC, "Золотой Автотюн-Бластер", "Стреляет мощными рифмами и идеальными гармониками."),
             Triple(WeaponType.AUTOTUNE_MIC, "Студийный Микрофон 'Марс-808'", "Низкочастотный импульс сносит толпы врагов назад."),
             Triple(WeaponType.AUTOTUNE_MIC, "Беспроводной Микрофон 'Голос Пентхауса'", "Высокая скорострельность и кристально чистый звук."),
-            Triple(WeaponType.AUTOTUNE_MIC, "Платиновый Мик 'Панчлайн-Мастер'", "Критический урон при попадании прямо в датчик цензора."),
+            Triple(WeaponType.AUTOTUNE_MIC, "Платиновый Мик 'Панчлайн-Мастер'", "Критический урон при попадании прямо в датчик натурала."),
             Triple(WeaponType.AUTOTUNE_MIC, "Микрофон 'Дуэт с Жульеном'", "Гармонический залп романтического марсианского трэпа."),
-            Triple(WeaponType.AUTOTUNE_MIC, "Рэп-Пушка 'Дисс на Цензуру'", "Спектральный волновой импульс, сжигающий микросхемы."),
+            Triple(WeaponType.AUTOTUNE_MIC, "Рэп-Пушка 'Дисс на Натуралов'", "Спектральный волновой импульс, сжигающий микросхемы."),
             Triple(WeaponType.AUTOTUNE_MIC, "Винтажный Ламповый Микрофон 1984", "Теплый ламповый саунд разрывает холодный металл дронов."),
             Triple(WeaponType.AUTOTUNE_MIC, "Микрофон 'Император 800-го Этажа'", "Ультимативный микрофон из сплава метеорита и платины."),
 
             Triple(WeaponType.PLATINUM_BLASTER, "Платиновый Бластер Басов", "Сверхзвуковые гипер-волны прожигают броню насквозь."),
             Triple(WeaponType.PLATINUM_BLASTER, "Бас-Пушка 'Турбина 6969'", "Двигатель гиперкара, переделанный Батей в акустическую пушку."),
-            Triple(WeaponType.PLATINUM_BLASTER, "Квантовый Дезинтегратор Цензоров", "Расщепляет скуку и душнил на квантовом уровне."),
+            Triple(WeaponType.PLATINUM_BLASTER, "Квантовый Дезинтегратор Натуралов", "Расщепляет скуку и душнил на квантовом уровне."),
             Triple(WeaponType.PLATINUM_BLASTER, "Платиновый Излучатель 'Алмазный Закат'", "Ослепительный золотисто-белый луч нереальной мощи."),
             Triple(WeaponType.PLATINUM_BLASTER, "Тяжелый Бластер 'Батин Калибр'", "Создан для ликвидации гигантских шагающих боссов."),
             Triple(WeaponType.PLATINUM_BLASTER, "Орбитальный Синтезатор Басов", "Заряжается от спутников Марса и бьет на полкарты."),
             Triple(WeaponType.PLATINUM_BLASTER, "Плазменный Резонатор 'Париж-Марс'", "Совместный проект Жульена и лабораторий пентхауса."),
-            Triple(WeaponType.PLATINUM_BLASTER, "Гипер-Бластер 'Абсолютный Владик'", "Венец марсианского оружейного искусства.")
+            Triple(WeaponType.PLATINUM_BLASTER, "Гипер-Бластер 'Абсолютный Владик'", "Венец марсианского оружейного искусства."),
+
+            // NEW SPECIAL ARTIFACTS / WEAPONS REQUESTED BY USER
+            Triple(WeaponType.EXPLODING_BLACK_MAN, "Мортира Черных Взрывных Человечков", "Стреляет черными взрывающимися бегунами, которые детонируют при контакте с врагами в чудовищный огненный взрыв!"),
+            Triple(WeaponType.EXPLODING_BLACK_MAN, "Гранатомет 'Черный Нитро-Спецназ'", "Запускает быстрых черных бегунов, взрывающих ряды натуралов и скуфов."),
+            Triple(WeaponType.RAINBOW_LGBT_FLAG, "Радужный Флагомет 'Pride Flex'", "Стреляет светящимися ЛГБТ флагами, ослепляя врагов и нанося чистый неоновый урон."),
+            Triple(WeaponType.RAINBOW_LGBT_FLAG, "Плазменный Флаг-Лаунчер 'Радуга 6969'", "Выпускает веер радужных флагов, пробивающих толпы насквозь."),
+            Triple(WeaponType.CLUSTER_PINK_PHALLUS, "Кластерный Розовый Фалос-Ган", "Стреляет большим розовым фалосом, который при ударе разлетается на кучу маленьких снарядов!"),
+            Triple(WeaponType.CLUSTER_PINK_PHALLUS, "Двойной Кластер-Дилдомет Mk.800", "Заряжен вибрирующими розовыми снарядами с кассетным расщеплением."),
+            Triple(WeaponType.EXPLOSIVE_BOOM_BLASTER, "Взрывной Бластер Сверхновой", "При каждом выстреле создает мощную ударную волну вокруг Владика и запускает детонирующую плазму!"),
+            Triple(WeaponType.EXPLOSIVE_BOOM_BLASTER, "Бас-Бомбарда 'Взрывной Сабвуфер'", "Сотрясает землю взрывами при стрельбе и разрывает врагов на куски."),
+            Triple(WeaponType.WHITE_SLIME_DISPENSER, "Диспенсер Белой Жидкости", "Разливает лужи белой субстанции: враги в ней медленно ходят и получают постоянный урон!"),
+            Triple(WeaponType.WHITE_SLIME_DISPENSER, "Шейкер Белой Жижи 'Парижский Коктейль'", "Обильно заливает арену белой жижей, сковывая самых быстрых качков и боссов.")
         )
 
         for (idx in weaponTemplates.indices) {
@@ -84,6 +96,11 @@ object ItemDatabase {
                     WeaponType.PINK_SHOCKER -> Color(0xFFFF69B4)
                     WeaponType.AUTOTUNE_MIC -> Color(0xFFFFD700)
                     WeaponType.PLATINUM_BLASTER -> Color(0xFFE2E8F0)
+                    WeaponType.EXPLODING_BLACK_MAN -> Color(0xFF1E293B)
+                    WeaponType.RAINBOW_LGBT_FLAG -> Color(0xFFFF007F)
+                    WeaponType.CLUSTER_PINK_PHALLUS -> Color(0xFFFF1493)
+                    WeaponType.EXPLOSIVE_BOOM_BLASTER -> Color(0xFFFF6B00)
+                    WeaponType.WHITE_SLIME_DISPENSER -> Color(0xFFF8FAFC)
                 },
                 rarity = rarity
             )
@@ -151,7 +168,7 @@ object ItemDatabase {
                 bonusSpeed = spd,
                 bonusDamage = dmg,
                 bonusHypeRate = hype,
-                loreStory = "Эксклюзивный предмет из личной коллекции Владика на Марсе. Подчеркивает превосходство над серостью и цензурой."
+                loreStory = "Эксклюзивный предмет из личной коллекции Владика на Марсе. Подчеркивает превосходство над серостью и натуралами."
             )
 
             list.add(

@@ -24,7 +24,22 @@ enum class TileType(val isWalkable: Boolean, val color: Color, val detailChar: S
     PARKED_HYPERCAR(false, Color(0xFFFF0055), "🏎"),
 
     CRYO_FLOOR(true, Color(0xFF0E3247)),
-    CRYO_CHAMBER(false, Color(0xFF00B4D8), "❄")
+    CRYO_CHAMBER(false, Color(0xFF00B4D8), "❄"),
+
+    SOVIET_CONCRETE(true, Color(0xFF3B0712)),
+    SOVIET_STAR(false, Color(0xFFFF3344), "★"),
+    TOXIC_MUD(true, Color(0xFF052E16)),
+    TOXIC_SPORE(false, Color(0xFF4ADE80), "☣"),
+    CRYSTAL_FLOOR(true, Color(0xFF082F49)),
+    CRYSTAL_SPIRE(false, Color(0xFF38BDF8), "✧"),
+    CASINO_CARPET(true, Color(0xFF1C1917)),
+    ROULETTE_TABLE(false, Color(0xFFFBBF24), "🎰"),
+    RAVE_STAGE(true, Color(0xFF3B0764)),
+    SUBWOOFER_WALL(false, Color(0xFFF43F5E), "🔊"),
+    VOLCANO_MAGMA(true, Color(0xFF431407)),
+    OBSIDIAN_BOULDER(false, Color(0xFFFB923C), "🌋"),
+    GOLDEN_TILES(true, Color(0xFF451A03)),
+    GOLDEN_STATUE(false, Color(0xFFFFE066), "👑")
 }
 
 object ProceduralWorld {
@@ -34,13 +49,9 @@ object ProceduralWorld {
     fun getBiomeForPosition(worldX: Float, worldY: Float): BiomeType {
         val regionX = (worldX / (TILE_SIZE * 30)).toInt()
         val regionY = (worldY / (TILE_SIZE * 30)).toInt()
-        val hash = abs((regionX * 73856093) xor (regionY * 19349663)) % 4
-        return when (hash) {
-            0 -> BiomeType.PENTHOUSE
-            1 -> BiomeType.WASTELAND
-            2 -> BiomeType.GARAGE
-            else -> BiomeType.CRYO_LOUNGE
-        }
+        val biomes = BiomeType.values()
+        val hash = abs((regionX * 73856093) xor (regionY * 19349663)) % biomes.size
+        return biomes[hash]
     }
 
     fun getTile(tx: Int, ty: Int): TileType {
@@ -85,6 +96,48 @@ object ProceduralWorld {
                     else -> TileType.CRYO_FLOOR
                 }
             }
+            BiomeType.SOVIET_BUNKER -> {
+                when {
+                    tx % 8 == 0 && ty % 8 == 0 -> TileType.SOVIET_STAR
+                    else -> TileType.SOVIET_CONCRETE
+                }
+            }
+            BiomeType.TOXIC_SWAMP -> {
+                when {
+                    hash < 10 -> TileType.TOXIC_SPORE
+                    else -> TileType.TOXIC_MUD
+                }
+            }
+            BiomeType.CRYSTAL_CAVERN -> {
+                when {
+                    hash < 9 -> TileType.CRYSTAL_SPIRE
+                    else -> TileType.CRYSTAL_FLOOR
+                }
+            }
+            BiomeType.NEON_CASINO -> {
+                when {
+                    tx % 7 == 0 && ty % 7 == 0 -> TileType.ROULETTE_TABLE
+                    else -> TileType.CASINO_CARPET
+                }
+            }
+            BiomeType.RAVE_ARENA -> {
+                when {
+                    tx % 6 == 0 && ty % 6 == 0 -> TileType.SUBWOOFER_WALL
+                    else -> TileType.RAVE_STAGE
+                }
+            }
+            BiomeType.VOLCANO_CORE -> {
+                when {
+                    hash < 11 -> TileType.OBSIDIAN_BOULDER
+                    else -> TileType.VOLCANO_MAGMA
+                }
+            }
+            BiomeType.ETERNAL_THRONE -> {
+                when {
+                    tx % 9 == 0 && ty % 9 == 0 -> TileType.GOLDEN_STATUE
+                    else -> TileType.GOLDEN_TILES
+                }
+            }
         }
     }
 
@@ -110,13 +163,13 @@ object ProceduralWorld {
     }
 
     private val punchlines = listOf(
-        "Роботы-цензоры хотят отключить мой автотюн? Ни за что!",
+        "Роботы-натуралы хотят отключить мой автотюн? Ни за что!",
         "Мои мраморные колонны сделаны из редчайшего марсианского камня!",
         "Эти жестянки и качки-рейдеры не выдержат басов с 800-го этажа!",
         "Мои лавовые лампы стоят больше всего вашего космического флота!",
         "Врубаю 6969 лошадиных сил прямо в лоб завистникам!",
         "Мои цепи ярче марсианского солнца, их датчики плавятся!",
-        "В моём гараже 6969 гиперкаров, а у цензоров только штрафы!",
+        "В моём гараже 6969 гиперкаров, а у натуралов только штрафы!",
         "800 этажей роскоши! Куда вы лезете, душнилы?!",
         "Я читаю рэп на квантовой частоте Марса, ловите бит!",
         "Радужный бриллиантовый флекс пробивает любые энергощиты!",
@@ -127,8 +180,8 @@ object ProceduralWorld {
         return punchlines.random()
     }
 
-    // 100 Unique Story Endings
-    val all100Endings: List<StoryEnding> get() = EndingsDatabase.all100StoryEndings
+    // 1111 Unique Story Endings
+    val all100Endings: List<StoryEnding> get() = EndingsDatabase.all1111StoryEndings
 
     // 50 Friendly NPCs
     fun getStoryNPCs(): List<FriendlyNPC> = NPCDatabase.getAllNPCs()
@@ -140,6 +193,18 @@ object ProceduralWorld {
     fun generateWorldArtifactsForFloor(floor: Int): List<WorldArtifact> =
         ItemDatabase.generateFloorWorldArtifacts(floor)
 
+    fun generateRandomArtifact(floor: Int): Artifact {
+        val base = ItemDatabase.all200WorldArtifacts.random()
+        return base.copy(
+            id = java.util.UUID.randomUUID().toString(),
+            level = floor,
+            bonusHp = base.bonusHp + floor * 6f,
+            bonusDamage = base.bonusDamage + floor * 3.5f,
+            bonusSpeed = base.bonusSpeed + floor * 1.5f,
+            bonusHypeRate = base.bonusHypeRate + floor * 0.05f
+        )
+    }
+
     fun getDefaultQuests(): List<Quest> {
         val list = mutableListOf<Quest>()
 
@@ -150,7 +215,7 @@ object ProceduralWorld {
                 giverNpcId = "npc_julien",
                 giverName = "⏱ ЕЖЕДНЕВНЫЙ КОНТРАКТ 24Ч",
                 title = "24Ч: Парижский Рейд против Дронов",
-                description = "Ежедневное задание: Уничтожь 25 цензор-дронов за 24 часа. Награда обновится через 24ч!",
+                description = "Ежедневное задание: Уничтожь 25 дронов-натуралов за 24 часа. Награда обновится через 24ч!",
                 type = QuestType.KILL_ENEMIES,
                 targetAmount = 25,
                 rewardDiamonds = 100,
@@ -238,6 +303,11 @@ object ProceduralWorld {
             WeaponType.PINK_SHOCKER -> 50f + floor * 14f
             WeaponType.AUTOTUNE_MIC -> 65f + floor * 18f
             WeaponType.PLATINUM_BLASTER -> 85f + floor * 20f
+            WeaponType.EXPLODING_BLACK_MAN -> 95f + floor * 22f
+            WeaponType.RAINBOW_LGBT_FLAG -> 70f + floor * 16f
+            WeaponType.CLUSTER_PINK_PHALLUS -> 80f + floor * 18f
+            WeaponType.EXPLOSIVE_BOOM_BLASTER -> 110f + floor * 25f
+            WeaponType.WHITE_SLIME_DISPENSER -> 60f + floor * 15f
         } * (1f + rarity.ordinal * 0.35f)
 
         val name = when (type) {
@@ -246,6 +316,11 @@ object ProceduralWorld {
             WeaponType.PINK_SHOCKER -> "Шокер $prefix $suffix"
             WeaponType.AUTOTUNE_MIC -> "Микрофон $prefix $suffix"
             WeaponType.PLATINUM_BLASTER -> "Платиновый Бластер $prefix $suffix"
+            WeaponType.EXPLODING_BLACK_MAN -> "Мортира Черных Бегунов $prefix $suffix"
+            WeaponType.RAINBOW_LGBT_FLAG -> "Радужный Флагомет $prefix $suffix"
+            WeaponType.CLUSTER_PINK_PHALLUS -> "Кластерный Фалос-Ган $prefix $suffix"
+            WeaponType.EXPLOSIVE_BOOM_BLASTER -> "Взрывной Бластер $prefix $suffix"
+            WeaponType.WHITE_SLIME_DISPENSER -> "Диспенсер Белой Жижи $prefix $suffix"
         }
 
         val desc = when (type) {
@@ -254,6 +329,11 @@ object ProceduralWorld {
             WeaponType.PINK_SHOCKER -> "Выпускает сгустки концентрированного розового гламура."
             WeaponType.AUTOTUNE_MIC -> "Стреляет звуковыми ударными волнами высочайшего битрейта."
             WeaponType.PLATINUM_BLASTER -> "Разрушительные басовые вибрации прожигают броню."
+            WeaponType.EXPLODING_BLACK_MAN -> "Стреляет черными бегунами, которые детонируют при попадании."
+            WeaponType.RAINBOW_LGBT_FLAG -> "Стреляет радужными флагами, ослепляющими толпы натуралов."
+            WeaponType.CLUSTER_PINK_PHALLUS -> "Снаряд разлетается на веер маленьких розовых фалосов при контакте."
+            WeaponType.EXPLOSIVE_BOOM_BLASTER -> "Создает взрыв при стрельбе и разносит врагов мощной волной."
+            WeaponType.WHITE_SLIME_DISPENSER -> "Разливает лужи белой субстанции, замедляя и растворяя врагов."
         }
 
         val color = when (type) {
@@ -262,6 +342,11 @@ object ProceduralWorld {
             WeaponType.PINK_SHOCKER -> Color(0xFFFF69B4)
             WeaponType.AUTOTUNE_MIC -> Color(0xFFFFD700)
             WeaponType.PLATINUM_BLASTER -> Color(0xFFE2E8F0)
+            WeaponType.EXPLODING_BLACK_MAN -> Color(0xFF1E293B)
+            WeaponType.RAINBOW_LGBT_FLAG -> Color(0xFFFF007F)
+            WeaponType.CLUSTER_PINK_PHALLUS -> Color(0xFFFF1493)
+            WeaponType.EXPLOSIVE_BOOM_BLASTER -> Color(0xFFFF6B00)
+            WeaponType.WHITE_SLIME_DISPENSER -> Color(0xFFF8FAFC)
         }
 
         return Weapon(
@@ -270,8 +355,8 @@ object ProceduralWorld {
             description = desc,
             damage = baseDamage,
             attackSpeed = 2.4f + Random.nextFloat() * 0.6f,
-            range = if (type == WeaponType.RUBBER_BAT || type == WeaponType.GLAM_WHIP) 95f else 300f,
-            knockback = if (type == WeaponType.RUBBER_BAT) 190f else 70f,
+            range = if (type == WeaponType.RUBBER_BAT || type == WeaponType.GLAM_WHIP) 95f else 320f,
+            knockback = if (type == WeaponType.RUBBER_BAT) 190f else 75f,
             color = color,
             rarity = rarity,
             level = 1

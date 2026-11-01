@@ -15,7 +15,25 @@ enum class GameScreen {
     QUEST_LOG,
     ENDINGS_ARCHIVE,
     GAME_OVER,
-    VICTORY
+    VICTORY,
+    GARAGE,
+    WARDROBE
+}
+
+enum class VladSkin(
+    val id: String,
+    val title: String,
+    val description: String,
+    val unlockedEndingThreshold: Int,
+    val drawableResId: Int,
+    val iconEmoji: String
+) {
+    GAY_CAR("skin_gaycar", "GAY-CAR Пуховик & LV Сумка", "Фирменный образ Рэпера Владика: пуховик, LV сумка с деньгами и суперкар.", 0, com.example.R.drawable.vlad_skin_gaycar, "🏎️"),
+    UTENOK("skin_utenok", "Влад «Утёнок & Мальчик»", "Уточница в руках, мате-чик на подхвате и танцевальный флекс.", 10, com.example.R.drawable.vlad_skin_utenok, "🐥"),
+    FATHER("skin_father", "Батя Влада", "Соломенная шляпа, майка-сеточка, золотые цепи и накачанный пресс.", 25, com.example.R.drawable.vlad_skin_father, "🧔"),
+    PINK_FUR("skin_pinkfur", "Розовая Меховая Шуба", "Шикарный розовый мех, панама с зеленым кактусом и блинги.", 50, com.example.R.drawable.vlad_skin_pinkfur, "🌵"),
+    HEADPHONES("skin_headphones", "Геймер-Владик с Гитарой", "Белые студийные наушники, электрогитара Fender и геймпад.", 100, com.example.R.drawable.vlad_skin_headphones, "🎸"),
+    LOLLY_HOLLY("skin_lolly", "Lolly Holly Влад", "Черный глэм-кожаный костюм с кошачьими ушками и слезами на щеках.", 200, com.example.R.drawable.vlad_skin_lolly, "🖤")
 }
 
 enum class GameDifficulty(
@@ -26,7 +44,7 @@ enum class GameDifficulty(
 ) {
     NORMAL("Нормальный Хайп", "Сбалансированное приключение на Марсе", 1.0f, 1.0f),
     HARD("Сверхтяжелый Марс", "Очень сложный режим: враги в 3.5х сильнее и быстрее!", 3.5f, 3.0f),
-    EXTREME("Экстремальный Марс", "Усиленные роботы-цензоры и качки-рейдеры", 1.4f, 1.5f),
+    EXTREME("Экстремальный Марс", "Усиленные роботы-натуралы и качки-рейдеры", 1.4f, 1.5f),
     VIP_FLEX("VIP Флекс-Режим", "Владик получает +50% ресурсов и щит", 0.85f, 1.2f)
 }
 
@@ -34,7 +52,14 @@ enum class BiomeType(val displayName: String, val baseColor: Color) {
     PENTHOUSE("Неоновый Пентхаус", Color(0xFF2D124D)),
     WASTELAND("Красная Пустыня Марса", Color(0xFF6B200B)),
     GARAGE("Гараж 6969 Суперкаров", Color(0xFF141926)),
-    CRYO_LOUNGE("VIP Крио-Лаундж", Color(0xFF0F3B4A))
+    CRYO_LOUNGE("VIP Крио-Лаундж", Color(0xFF0F3B4A)),
+    SOVIET_BUNKER("Советский Бункер Марса", Color(0xFF3B0712)),
+    TOXIC_SWAMP("Токсичные Неоновые Болота", Color(0xFF052E16)),
+    CRYSTAL_CAVERN("Алмазные Пещеры", Color(0xFF082F49)),
+    NEON_CASINO("Казино 'Все на Зеро'", Color(0xFF1C1917)),
+    RAVE_ARENA("Рейв-Арена 808", Color(0xFF3B0764)),
+    VOLCANO_CORE("Ядро Вулкана Олимп", Color(0xFF431407)),
+    ETERNAL_THRONE("Золотой Трон Влада", Color(0xFF451A03))
 }
 
 enum class TimeOfDay(val displayName: String, val ambientColor: Color, val ambientDarkness: Float) {
@@ -48,7 +73,22 @@ enum class WeaponType {
     GLAM_WHIP,
     PINK_SHOCKER,
     AUTOTUNE_MIC,
-    PLATINUM_BLASTER
+    PLATINUM_BLASTER,
+    EXPLODING_BLACK_MAN,
+    RAINBOW_LGBT_FLAG,
+    CLUSTER_PINK_PHALLUS,
+    EXPLOSIVE_BOOM_BLASTER,
+    WHITE_SLIME_DISPENSER
+}
+
+enum class ProjectileType {
+    STANDARD,
+    EXPLODING_MAN,
+    RAINBOW_FLAG,
+    CLUSTER_PHALLUS,
+    CLUSTER_MINI,
+    EXPLOSION_ORB,
+    WHITE_SLIME
 }
 
 enum class ItemRarity(val title: String, val color: Color) {
@@ -138,7 +178,19 @@ data class Projectile(
     val color: Color,
     val isPlayer: Boolean,
     var lifetime: Float,
-    val id: String = UUID.randomUUID().toString()
+    val id: String = UUID.randomUUID().toString(),
+    val projectileType: ProjectileType = ProjectileType.STANDARD
+)
+
+data class GroundHazard(
+    val id: String = UUID.randomUUID().toString(),
+    var x: Float,
+    var y: Float,
+    var radius: Float = 55f,
+    var lifetime: Float = 8.0f,
+    val maxLifetime: Float = 8.0f,
+    val damagePerSec: Float = 60f,
+    val slowFactor: Float = 0.4f
 )
 
 data class Particle(
@@ -202,17 +254,20 @@ enum class FloorBiome(val title: String, val primaryColor: Color, val accentColo
     CYBER_GARAGE("Кибер-Гараж 6969", Color(0xFF0F172A), Color(0xFF00F0FF)),
     MARTIAN_CANYON("Багровый Марсианский Каньон", Color(0xFF450A0A), Color(0xFFFF4081)),
     LAVA_MATRIX("Матрица Неоновых Лав", Color(0xFF18181B), Color(0xFF10B981)),
-    PALACE_SUMMIT("Золотой Пик Марса", Color(0xFF2E1065), Color(0xFFE040FB));
+    PALACE_SUMMIT("Золотой Пик Марса", Color(0xFF2E1065), Color(0xFFE040FB)),
+    RETRO_BUNKER("Советский Марсианский Бункер", Color(0xFF3B0712), Color(0xFFFF3344)),
+    TOXIC_SWAMP("Токсичный Неоновый Свамп", Color(0xFF052E16), Color(0xFF4ADE80)),
+    CRYSTAL_CAVERN("Алмазные Кристальные Пещеры", Color(0xFF082F49), Color(0xFF38BDF8)),
+    NEON_CASINO("Космическое Казино 'Все на Зеро'", Color(0xFF1C1917), Color(0xFFFBBF24)),
+    CYBER_RAVE("Рейв-Арена '808 Бас'", Color(0xFF3B0764), Color(0xFFF43F5E)),
+    OLYMPUS_VOLCANO("Ядро Вулкана Олимп", Color(0xFF431407), Color(0xFFFB923C)),
+    ETERNAL_THRONE("Вечный Золотой Трон Владика", Color(0xFF451A03), Color(0xFFFFE066));
 
     companion object {
         fun getForFloor(floor: Int): FloorBiome {
-            return when {
-                floor <= 50 -> PENTHOUSE
-                floor <= 150 -> CYBER_GARAGE
-                floor <= 300 -> MARTIAN_CANYON
-                floor <= 500 -> LAVA_MATRIX
-                else -> PALACE_SUMMIT
-            }
+            val biomes = values()
+            val index = ((floor - 1) / 5) % biomes.size
+            return biomes[index]
         }
     }
 }
@@ -266,15 +321,21 @@ data class Player(
     var kills: Int = 0,
     var floor: Int = 1,
     var equippedWeapon: Weapon,
+    val equippedWeapons: MutableList<Weapon> = mutableListOf(),
     val inventoryWeapons: MutableList<Weapon> = mutableListOf(),
     val equippedArtifacts: MutableList<Artifact> = mutableListOf(),
     var activeCompanion: ActiveCompanion? = null,
+    var activeSkin: VladSkin = VladSkin.GAY_CAR,
     var isGodModeVlad: Boolean = false,
     var isMoving: Boolean = false,
     var walkCycleTimer: Float = 0f,
     var speechText: String? = null,
     var speechTimer: Float = 0f
-)
+) {
+    fun getEffectiveEquippedWeapons(): List<Weapon> {
+        return if (equippedWeapons.isNotEmpty()) equippedWeapons.toList() else listOf(equippedWeapon)
+    }
+}
 
 data class CraftingRecipe(
     val id: String,
@@ -356,3 +417,195 @@ data class Quest(
     var isCompleted: Boolean = false,
     var isClaimed: Boolean = false
 )
+
+enum class CarUpgradeType(
+    val title: String,
+    val description: String,
+    val iconEmoji: String,
+    val maxLevel: Int = 1000
+) {
+    BULLBAR("Кенгурятник с дилдоками", "Золотой кенгурятник с розовыми шипами. Наносит сокрушительный таранный урон врагам.", "🍆"),
+    SPOILER("Вибро-спойлер", "Антикрыло с высокочастотной вибрацией. Стабилизирует машину и ошеломляет врагов.", "⚡"),
+    ROCKET("Ракетный двигатель", "Турбореактивная установка на метане Марса. Увеличивает скорость рывка гиперкара.", "🚀"),
+    NITRO("Радужное нитро", "Шлейф из искр радужного пламени. Ослепляет врагов и оставляет огненный след.", "🌈"),
+    ARMOR("Бриллиантовая броня", "Титаново-алмазная обшивка. Увеличивает время действия и прочность на поле боя.", "💎")
+}
+
+data class CarUpgrades(
+    val bullbarLevel: Int = 0, // 0..1000
+    val spoilerLevel: Int = 0, // 0..1000
+    val rocketLevel: Int = 0,  // 0..1000
+    val nitroLevel: Int = 0,   // 0..1000
+    val armorLevel: Int = 0    // 0..1000
+) {
+    fun getTotalLevel(): Int = bullbarLevel + spoilerLevel + rocketLevel + nitroLevel + armorLevel
+
+    fun getLevel(type: CarUpgradeType): Int = when (type) {
+        CarUpgradeType.BULLBAR -> bullbarLevel
+        CarUpgradeType.SPOILER -> spoilerLevel
+        CarUpgradeType.ROCKET -> rocketLevel
+        CarUpgradeType.NITRO -> nitroLevel
+        CarUpgradeType.ARMOR -> armorLevel
+    }
+
+    fun getGoldCost(type: CarUpgradeType): Int {
+        val lvl = getLevel(type)
+        return 50 + (lvl * 15)
+    }
+
+    fun getBatteryCost(type: CarUpgradeType): Int {
+        val lvl = getLevel(type)
+        return 1 + (lvl / 20)
+    }
+
+    fun withIncrement(type: CarUpgradeType): CarUpgrades = when (type) {
+        CarUpgradeType.BULLBAR -> copy(bullbarLevel = (bullbarLevel + 1).coerceAtMost(type.maxLevel))
+        CarUpgradeType.SPOILER -> copy(spoilerLevel = (spoilerLevel + 1).coerceAtMost(type.maxLevel))
+        CarUpgradeType.ROCKET -> copy(rocketLevel = (rocketLevel + 1).coerceAtMost(type.maxLevel))
+        CarUpgradeType.NITRO -> copy(nitroLevel = (nitroLevel + 1).coerceAtMost(type.maxLevel))
+        CarUpgradeType.ARMOR -> copy(armorLevel = (armorLevel + 1).coerceAtMost(type.maxLevel))
+    }
+
+    fun getBonusDamage(): Float = bullbarLevel * 8f
+    fun getBonusSpeed(): Float = rocketLevel * 0.45f + nitroLevel * 0.35f
+    fun getBonusLifetime(): Float = armorLevel * 0.003f
+    fun getRamKnockback(): Float = 250f + bullbarLevel * 1.5f
+}
+
+data class CarCustomization(
+    val pixels: List<Int>, // 32x32 = 1024 ARGB color ints, 0 = transparent
+    val presetName: String = "Бирюзовый Влад"
+) {
+    companion object {
+        const val CANVAS_SIZE = 32
+
+        fun createEmpty(): CarCustomization {
+            return CarCustomization(List(CANVAS_SIZE * CANVAS_SIZE) { 0 }, "Кастом")
+        }
+
+        fun createDefault(): CarCustomization {
+            // Generates a 32x32 hypercar with turquoise body, tinted windshield, rainbow stripe, wheels
+            val grid = IntArray(CANVAS_SIZE * CANVAS_SIZE) { 0 }
+            val cCyan = 0xFF00E5FF.toInt()
+            val cDarkCyan = 0xFF00838F.toInt()
+            val cBlack = 0xFF1E293B.toInt()
+            val cTire = 0xFF0F172A.toInt()
+            val cRim = 0xFFFFD700.toInt()
+            val cGlass = 0xFF80DEEA.toInt()
+            val cGlow = 0xFFF43F5E.toInt()
+            val rainbow = intArrayOf(
+                0xFFFF0055.toInt(), 0xFFFF7F00.toInt(), 0xFFFFD700.toInt(),
+                0xFF00FF66.toInt(), 0xFF00E5FF.toInt(), 0xFFB5179E.toInt()
+            )
+
+            // Car body footprint (facing right, centered)
+            for (y in 10..22) {
+                for (x in 4..27) {
+                    // Aerodynamic car silhouette
+                    if (y in 12..20) {
+                        grid[y * CANVAS_SIZE + x] = cCyan
+                    } else if (y in 10..11 && x in 10..21) {
+                        // Cabin roof
+                        grid[y * CANVAS_SIZE + x] = cGlass
+                    } else if (y in 21..22 && x in 6..25) {
+                        grid[y * CANVAS_SIZE + x] = cDarkCyan
+                    }
+                }
+            }
+            // Rainbow racing stripe down the center
+            for (x in 5..26) {
+                val rColor = rainbow[(x) % rainbow.size]
+                grid[16 * CANVAS_SIZE + x] = rColor
+            }
+            // Windshield & Side Windows
+            for (y in 11..13) {
+                for (x in 16..21) {
+                    grid[y * CANVAS_SIZE + x] = cGlass
+                }
+            }
+            // Wheels
+            val wheelPositions = listOf(Pair(7, 9), Pair(24, 9), Pair(7, 22), Pair(24, 22))
+            for ((wx, wy) in wheelPositions) {
+                for (dy in 0..2) {
+                    for (dx in 0..2) {
+                        val px = (wx + dx).coerceIn(0, 31)
+                        val py = (wy + dy).coerceIn(0, 31)
+                        grid[py * CANVAS_SIZE + px] = if (dx == 1 && dy == 1) cRim else cTire
+                    }
+                }
+            }
+            // Headlights & Taillights
+            grid[13 * CANVAS_SIZE + 27] = 0xFFFFFBEB.toInt()
+            grid[19 * CANVAS_SIZE + 27] = 0xFFFFFBEB.toInt()
+            grid[13 * CANVAS_SIZE + 4] = cGlow
+            grid[19 * CANVAS_SIZE + 4] = cGlow
+
+            return CarCustomization(grid.toList(), "Бирюзовый Влад")
+        }
+
+        fun createGoldRolls(): CarCustomization {
+            val grid = IntArray(CANVAS_SIZE * CANVAS_SIZE) { 0 }
+            val cGold = 0xFFFFD700.toInt()
+            val cDeepGold = 0xFFB45309.toInt()
+            val cDark = 0xFF0F172A.toInt()
+            val cWhite = 0xFFFFFFFF.toInt()
+            val cGlass = 0xFF38BDF8.toInt()
+
+            for (y in 11..21) {
+                for (x in 4..27) {
+                    grid[y * CANVAS_SIZE + x] = if (y in 13..19) cGold else cDeepGold
+                }
+            }
+            for (y in 10..12) {
+                for (x in 10..20) {
+                    grid[y * CANVAS_SIZE + x] = cGlass
+                }
+            }
+            // Diamond chrome trim
+            for (x in 4..27) {
+                grid[16 * CANVAS_SIZE + x] = cWhite
+            }
+            return CarCustomization(grid.toList(), "Золотой Роллс-Ройс")
+        }
+
+        fun createRainbowPride(): CarCustomization {
+            val grid = IntArray(CANVAS_SIZE * CANVAS_SIZE) { 0 }
+            val rainbow = intArrayOf(
+                0xFFFF0055.toInt(), 0xFFFF7F00.toInt(), 0xFFFFD700.toInt(),
+                0xFF00FF66.toInt(), 0xFF00E5FF.toInt(), 0xFFB5179E.toInt()
+            )
+            for (y in 11..21) {
+                val c = rainbow[(y - 11) % rainbow.size]
+                for (x in 5..26) {
+                    grid[y * CANVAS_SIZE + x] = c
+                }
+            }
+            return CarCustomization(grid.toList(), "Pride Гиперкар")
+        }
+
+        fun createCyberBatmobile(): CarCustomization {
+            val grid = IntArray(CANVAS_SIZE * CANVAS_SIZE) { 0 }
+            val cDark = 0xFF18181B.toInt()
+            val cNeonPink = 0xFFFF007F.toInt()
+            val cCyan = 0xFF06B6D4.toInt()
+            for (y in 11..21) {
+                for (x in 4..27) {
+                    grid[y * CANVAS_SIZE + x] = cDark
+                }
+            }
+            for (x in 4..27) {
+                grid[12 * CANVAS_SIZE + x] = cNeonPink
+                grid[20 * CANVAS_SIZE + x] = cCyan
+            }
+            return CarCustomization(grid.toList(), "Кибер-Бэтмобиль")
+        }
+    }
+}
+
+data class CurrencyDelta(
+    val id: String = UUID.randomUUID().toString(),
+    val amount: Int,
+    val type: String, // "GOLD", "DIAMONDS", "BATTERIES"
+    val timestamp: Long = System.currentTimeMillis()
+)
+
